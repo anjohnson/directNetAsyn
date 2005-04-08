@@ -1,0 +1,274 @@
+# CPU Status Relays
+record(bi, "$(name):SP11")
+{
+	field(DESC,"Forced run mode")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) SP11")
+	field(ONAM,"RUN")
+	field(ZNAM," ")
+	field(SCAN,"5 second")
+}
+record(bi, "$(name):SP12")
+{
+	field(DESC,"Terminal run mode")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) SP12")
+	field(ONAM,"TERM/RUN")
+	field(ZNAM," ")
+	field(SCAN,"I/O Intr")
+}
+record(bi, "$(name):SP13")
+{
+	field(DESC,"Test run mode")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) SP13")
+	field(ONAM,"TEST/RUN")
+	field(ZNAM," ")
+	field(SCAN,"I/O Intr")
+}
+record(bi, "$(name):SP15")
+{
+	field(DESC,"Test program mode")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) SP15")
+	field(ONAM,"TERM/TEST")
+	field(OSV, "MAJOR")
+	field(ZNAM," ")
+	field(SCAN,"I/O Intr")
+}
+record(bi, "$(name):SP16")
+{
+	field(DESC,"Terminal program mode")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) SP16")
+	field(ONAM,"TERM/PROGRAM")
+	field(OSV, "MAJOR")
+	field(ZNAM," ")
+	field(SCAN,"I/O Intr")
+}
+record(bi, "$(name):SP17")
+{
+	field(DESC,"Forced stop mode")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) SP17")
+	field(ONAM,"STOP")
+	field(OSV, "MAJOR")
+	field(ZNAM," ")
+	field(SCAN,"I/O Intr")
+}
+record(mbbi, "$(name):mode")
+{
+	field(DESC,"CPU mode")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) SP11")
+	field(NOBT,"7")
+	field(SCAN,"I/O Intr")
+	field(ZRST,"RUN")
+	field(ZRVL,"0x01")
+	field(ZRSV,"NO_ALARM")
+	field(ONST,"TERM/RUN")
+	field(ONVL,"0x02")
+	field(ONSV,"NO_ALARM")
+	field(TWST,"TEST/RUN")
+	field(TWVL,"0x04")
+	field(TWSV,"NO_ALARM")
+	field(THST,"TERM/TEST")
+	field(THVL,"0x10")
+	field(THSV,"MAJOR")
+	field(FRST,"TERM/PROGRAM")
+	field(FRVL,"0x20")
+	field(FRSV,"MAJOR")
+	field(FVST,"STOP")
+	field(FVVL,"0x40")
+	field(FVSV,"MAJOR")
+}
+
+# System Monitoring Relays
+record(bi, "$(name):SP40")
+{
+	field(DESC,"Critical error")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) SP40")
+	field(ONAM,"ERROR")
+	field(OSV, "MAJOR")
+	field(ZNAM," ")
+	field(SCAN,"5 second")
+}
+record(bi, "$(name):SP41")
+{
+	field(DESC,"Warning")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) SP41")
+	field(ONAM,"WARNING")
+	field(ZNAM," ")
+	field(SCAN,"I/O Intr")
+}
+record(bi, "$(name):SP43")
+{
+	field(DESC,"Battery low")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) SP43")
+	field(ONAM,"WARNING")
+	field(ZNAM," ")
+	field(SCAN,"I/O Intr")
+}
+record(bi, "$(name):SP44")
+{
+	field(DESC,"Program memory error")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) SP44")
+	field(ONAM,"ERROR")
+	field(OSV, "MAJOR")
+	field(ZNAM," ")
+	field(SCAN,"I/O Intr")
+}
+record(bi, "$(name):SP45")
+{
+	field(DESC,"I/O error")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) SP45")
+	field(ONAM,"ERROR")
+	field(OSV, "MAJOR")
+	field(ZNAM," ")
+	field(SCAN,"I/O Intr")
+}
+record(bi, "$(name):SP46")
+{
+	field(DESC,"Communications error")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) SP46")
+	field(ONAM,"ERROR")
+	field(OSV, "MINOR")
+	field(ZNAM," ")
+	field(SCAN,"I/O Intr")
+}
+record(bi, "$(name):SP47")
+{
+	field(DESC,"I/O config error")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) SP47")
+	field(ONAM,"ERROR")
+	field(OSV, "MAJOR")
+	field(ZNAM," ")
+	field(SCAN,"I/O Intr")
+}
+record(bi, "$(name):SP50")
+{
+	field(DESC,"Fault instruction")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) SP50")
+	field(ONAM,"FAULT")
+	field(OSV, "MAJOR")
+	field(ZNAM," ")
+	field(SCAN,"I/O Intr")
+}
+record(bi, "$(name):SP51")
+{
+	field(DESC,"Watch Dog timeout")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) SP51")
+	field(ONAM,"TIMEOUT")
+	field(OSV, "MAJOR")
+	field(ZNAM," ")
+	field(SCAN,"I/O Intr")
+}
+record(bi, "$(name):SP52")
+{
+	field(DESC,"Grammatical error")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) SP52")
+	field(ONAM,"ERROR")
+	field(OSV, "MAJOR")
+	field(ZNAM," ")
+	field(SCAN,"I/O Intr")
+}
+
+# Error diagnostic information
+record(ai, "$(name):V7751")
+{
+	field(DESC,"FAULT error code")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) V7751")
+	field(SCAN,"5 second")
+	field(SDIS,"$(name):SP50")
+	field(DISV,"0")
+}
+record(ai, "$(name):V7752")
+{
+	field(DESC,"Correct module ID")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) V7752")
+	field(SCAN,"10 second")
+	field(SDIS,"$(name):SP47")
+	field(DISV,"0")
+}
+record(ai, "$(name):V7753")
+{
+	field(DESC,"Incorrect module ID")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) V7753")
+	field(SCAN,"10 second")
+	field(SDIS,"$(name):SP47")
+	field(DISV,"0")
+}
+record(ai, "$(name):V7754")
+{
+	field(DESC,"Configuration Base & Slot")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) V7754")
+	field(SCAN,"10 second")
+	field(SDIS,"$(name):SP47")
+	field(DISV,"0")
+}
+record(ai, "$(name):V7755")
+{
+	field(DESC,"Fatal Error code")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) V7755")
+	field(SCAN,"5 second")
+}
+record(ai, "$(name):V7756")
+{
+	field(DESC,"Major Error code")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) V7756")
+	field(SCAN,"5 second")
+}
+record(ai, "$(name):V7757")
+{
+	field(DESC,"Minor Error code")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) V7757")
+	field(SCAN,"5 second")
+}
+record(ai, "$(name):V7765")
+{
+	field(DESC,"Scan count")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) V7765")
+	field(SCAN,"10 second")
+}
+record(ai, "$(name):V7775")
+{
+	field(DESC,"Scan time (msec)")
+	field(EGU, "milliseconds")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) V7775")
+	field(SCAN,"10 second")
+}
+record(ai, "$(name):V7776")
+{
+	field(DESC,"Fastest scan")
+	field(EGU, "milliseconds")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) V7776")
+	field(SCAN,"10 second")
+}
+record(ai, "$(name):V7777")
+{
+	field(DESC,"Slowest scan")
+	field(EGU, "milliseconds")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(INP, "@$(plc) V7777")
+	field(SCAN,"10 second")
+}

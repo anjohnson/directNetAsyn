@@ -1,0 +1,15 @@
+# DirectNetAsyn definitions.  The driver entry is only used for report()
+driver(drvDnAsyn)
+variable(devDnAsynDebug,int)
+registrar(devDnAsynRegistrar)
+registrar(dniAsynRegistrar)	# Interactive Command DNI, optional
+
+device(ai,INST_IO,devAiDnAsyn,"DirectNet PLC via ASYN")
+device(bi,INST_IO,devBiDnAsyn,"DirectNet PLC via ASYN")
+device(mbbi,INST_IO,devMbbiDnAsyn,"DirectNet PLC via ASYN")
+device(mbbiDirect,INST_IO,devMbbidDnAsyn,"DirectNet PLC via ASYN")
+
+device(ao,INST_IO,devAoDnAsyn,"DirectNet PLC via ASYN")
+device(bo,INST_IO,devBoDnAsyn,"DirectNet PLC via ASYN")
+device(mbbo,INST_IO,devMbboDnAsyn,"DirectNet PLC via ASYN")
+device(mbboDirect,INST_IO,devMbbodDnAsyn,"DirectNet PLC via ASYN")

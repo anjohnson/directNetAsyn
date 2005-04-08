@@ -1,0 +1,989 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+    "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="Author" content="Andrew Johnson">
+  <meta name="CVS ID" content="$Id$">
+  <title>directNet ASYN Device Support</title>
+</head>
+
+<body bgcolor="white">
+
+<center>
+<h1>Device Support for DirectNet PLCs via ASYN<br>
+directNetAsyn</h1>
+<address>
+  <a href="mailto:anj@aps.anl.gov">Andrew Johnson</a>
+</address>
+<br>
+Release 1-0, April 2005</center>
+
+<h2>Contents</h2>
+<a href="#Introduction">1. Introduction</a> <br>
+    <a href="#Release Changes">1.1 Release Changes</a> <br>
+    <a href="#Differences to directNetMpf">1.2 Differences to directNetMpf</a>
+<br>
+<a href="#Requirements">2. Requirements</a> <br>
+    <a href="#Software">2.1 Software</a> <br>
+    <a href="#Hardware">2.2 Hardware</a> <br>
+    <a href="#PLC Setup">2.3 PLC Setup</a> <br>
+<a href="#Installation">3. Installation</a> <br>
+    <a href="#Site Installation">3.1 Site Support Installation</a> <br>
+    <a href="#Application Installation">3.2 IOC Application Installation</a>
+<br>
+<a href="#Hardware Address Formats">4. Hardware Address Formats</a> <br>
+    <a href="#Address Examples">4.1 Address Examples</a> <br>
+<a href="#Record Types Supported">5. Record Types Supported</a> <br>
+    <a href="#Input Record Types">5.1 Input Record Types</a> <br>
+    <a href="#Output Record Types">5.2 Output Record Types</a> <br>
+    <a href="#Alarms">5.3 Alarms</a> <br>
+<a href="#Status and Interaction">6. Status and Interaction</a> <br>
+    <a href="#Status reports">6.1 Status Reports</a> <br>
+    <a href="#DirectNet Interact">6.2 DirectNet Interact</a> <br>
+<a href="#Examples">7. Examples</a> <br>
+    <a href="#Example Database">7.1 DL250 Status database</a> <br>
+    <a href="#Example Display">7.2 DL250 Status display screen</a>
+<hr>
+
+<h2><a name="Introduction"></a>1. Introduction</h2>
+
+<p>This document describes the EPICS device support for Automation Direct
+PLCs connected through a serial port using
+<a href="http://www.aps.anl.gov/epics/modules/soft/asyn/">asynDriver</a>.</p>
+
+<ul>
+  <li>A DL250 CPU is supported via either of its two serial ports.</li>
+  <li>A DL240 CPU may be controlled via Port 2</li>
+  <li>A D2-DCM serial port can also be used with either the DL250 or DL240
+  CPU</li>
+  <li>Only DL250 CPU serial connections have been tested.</li>
+  <li>The DL230 CPU does not support the DirectNet protocol so cannot be used
+    at all.</li>
+</ul>
+
+<p>Other Automation Direct PLCs which provide a DirectNet slave port might also
+work, but these have not been explored.</p>
+
+<h3><a name="Release Changes"></a>1.1 Release Changes</h3>
+<dl>
+  <dt>Release 1-0</dt>
+    <dd>First release</dd>
+</dl>
+
+<h3><a name="Differences to directNetMpf"></a>1.2 Differences to
+directNetMpf</h3>
+
+<p>If you are already familiar with the directNetMpf or directNetBug support
+applications, the main differences you should be aware of are documented in
+these sections:</p>
+
+<ul>
+  <li><a href="#Requirements">2. Requirements</a></li>
+  <li><a href="#Application Installation">3.2 IOC Application
+  Installation</a></li>
+  <li><a href="#Hardware Address Formats">4. Hardware Address Formats</a></li>
+  <li><a href="#DirectNet Interact">6.2 DirectNet Interact</a></li>
+</ul>
+<hr>
+
+<h2><a name="Requirements"></a>2. Requirements</h2>
+
+<h3><a name="Software"></a>2.1 Software</h3>
+
+<p>Release 1-0 of the software has been built with EPICS base R3.14.7,
+although it should build with R3.14.6 and possibly against earlier versions
+too.  It was designed and tested against asynDriver R4-0, and should work with
+all newer R4 versions as well.</p>
+
+<h3><a name="Hardware"></a>2.2 Hardware</h3>
+
+<p>This software can act as a DirectNet Master through any asynOctal serial
+port. It should be possible to drive several PLCs from a single RS422 line, but
+this configuration has not been tested. See the DirectNet documentation for
+information on network design considerations. To achieve the highest data
+throughput between the IOC and more than one PLC it is recommended that a
+separate serial line be used for each PLC, rather than connecting multiple PLCs
+through the same line.</p>
+
+<h3><a name="PLC Setup"></a>2.3 PLC Setup</h3>
+
+<p>The PLC must be configured to use the DirectNet protocol on the port to which
+ASYN is to be connected; communication will not be established otherwise. The
+serial format for Port 1 of the DL250 CPU is fixed (by the PLC) to be 9600 baud,
+8 bits, odd parity, although the format of the second serial port can be
+modified as required.  The serial format used by a local ASYN port is defined in
+the IOC's startup file <tt>st.cmd</tt>, whereas that of a remote port through a
+terminal server such as the Moxa NPort 5210 must be configured on the remote
+device itself.</p>
+
+<p>For safety reasons, the device support only allows the IOC database to write
+to a 512 word = 1024 byte region of the PLC's address map, locations V2000 to
+V2777. The IOC can only change a PLC output if the PLC is scanning a ladder
+logic program to validate the data in this area and copy it to the hardware
+outputs desired. There is no equivalent restriction on reading any location in
+the PLC memory map, thus digital inputs can be addressed directly by binary
+input records and so on.</p>
+
+<p>The PLC program must communicate with the IOC in binary, which may require
+additional programming steps as the PLC arithmetic is often performed with BCD
+numbers. This software does not support conversions to or from BCD, nor can it
+yet understand data in the PLC's Double or Floating Point formats.</p>
+
+<p>Some ladder logic code is required to support the reading of ADC inputs by
+the IOC - see the DL205 Analog I/O Modules manual for details. If the ADC
+readings are just for communication to the IOC then it is recommended that the
+multiplexing method be used, without the BCD conversion rung; the pointer
+method performs automatic conversion to BCD and would need extra rungs to
+convert the readings back to binary for use by the IOC.</p>
+<hr>
+
+<h2><a name="Installation"></a>3. Installation</h2>
+
+<p>This software is a support application maintained in the EPICS CVS
+respository at <tt>modules/plc/directNetAsyn</tt>, and is published as a tar
+file on the EPICS Modules Download page. Installation is in two parts:</p>
+
+<ul>
+  <li><a href="#Site Installation">Site support installation</a> is done once
+    for a particular version of EPICS base, and makes the software available
+    for use by IOC applications using that base version.</li>
+  <li><a href="#Application Installation">IOC application installation</a>
+    allows record instances to be created and causes the driver software to be
+    loaded at boot time.</li>
+</ul>
+
+<h3><a name="Site Installation"></a>3.1 Site Support Installation</h3>
+
+<p>The instructions in this section will have to be carried out by a suitably
+priviledged person before the software can be correctly used within IOC
+applications. To install the software:</p>
+
+<ul>
+  <li>First extract the software from the compressed tar file in an appropriate
+  location:
+    <blockquote>
+      <pre>% <b>cd /usr/local/iocapps/R3.14.7/modules</b>
+% <b>mkdir plc; cd plc</b>
+% <b>gnutar xfz directNetAsyn1-0.tar.gz</b></pre>
+    </blockquote>
+  </li>
+  <li>Next edit the configure/RELEASE file to set the correct paths
+    for the definitions of <tt>ASYN</tt> and <tt>EPICS_BASE</tt>:
+    <blockquote>
+      <pre>% <b>cd directNetAsyn1-0/configure</b>
+% <b>vi RELEASE</b></pre>
+    </blockquote>
+  </li>
+  <li>Finally build the support application:
+
+    <blockquote>
+      <pre>% <b>cd ..</b>
+% <b>gnumake</b></pre>
+    </blockquote>
+  </li>
+</ul>
+
+<h3><a name="Application Installation"></a>3.2 IOC Application
+Installation</h3>
+
+<p>An IOC applications developer who needs to use this DirectNet device
+  support must make the following changes to the application concerned:</p>
+
+<ul>
+  <li>Add the following line to the application's config/RELEASE file (assumes
+    <tt>SUPPORT</tt> is already set):
+
+    <blockquote>
+      <pre>DIRECTNETASYN=$(SUPPORT)/directNetAsyn1-0</pre>
+    </blockquote>
+  </li>
+  <li>Add this line somewhere in the application's dbd include list:
+
+    <blockquote>
+      <pre>include "devDnAsyn.dbd"</pre>
+    </blockquote>
+  </li>
+
+  <li>In the Makefile which constructs the IOC binary files, link the IOC
+    against the ASYN and directNetAsyn libraries:
+    <blockquote>
+      <pre>myioc_LIBS += directNetAsyn asyn</pre>
+    </blockquote>
+  </li>
+
+  <li>Each PLC must also be registered with the EPICS IOC in its <tt>st.cmd</tt>
+    file, which names the PLC and gives its directNet slave ID number, and
+    specifies the name of the Asyn serial port to which it is connected. The
+    IOC's startup script thus must contain the following, before the call to
+    <tt>iocInit</tt>:
+
+    <blockquote>
+      <pre>createDnAsynPLC "<i>PLCname</i>", <i>ID</i>, "<i>port</i>"</pre>
+    </blockquote>
+    
+    The directNet slave ID must match the setting configured in the PLC.
+  </li>
+</ul>
+<hr>
+
+<h2><a name="Hardware Address Formats"></a>4. Hardware Address Formats</h2>
+
+<p>The device type (DTYP) field of a PLC record should be set to
+<tt>"<b>DirectNet PLC via ASYN</b>"</tt>. The basic INP or OUT record hardware
+address is an Instrument I/O type and comprises a string which starts with an
+<b><tt>@</tt></b> character followed by the name of the PLC being addressed.
+This name must have been registered with the IOC using <tt>createDnAsynPLC</tt>
+in the startup file.  Note that although the name may contain spaces this is
+not recommended, and that upper case letters are regarded as different to
+lower case in the name.</p>
+
+<p>The name must be followed by a space, and the remaining string is examined by
+the device support for the corresponding address within the PLC. This address
+can be specified in the same way it would be given to the PLC programming
+software DirectSoft. The following table details the address types available.
+Note that just as when programming the PLC, all addresses and bit numbers must
+be given in octal, a leading zero being unnecessary (this address format is
+identical to that used by the directNetMpf driver, the only change required to
+convert records is to modify their DTYP string).</p>
+
+<blockquote>
+
+  <table border="1" bgcolor="#FFFFFF">
+    <thead>
+      <tr bgcolor="#000000">
+        <th><font color="#FFFFFF">Address Range</font></th>
+        <th><font color="#FFFFFF">Description</font></th>
+        <th><font color="#FFFFFF">Size</font></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>X0 - X777</td>
+        <td>Input point</td>
+        <td>Bit</td>
+      </tr>
+      <tr>
+        <td>Y0 - Y777</td>
+        <td>Output point</td>
+        <td>Bit</td>
+      </tr>
+      <tr>
+        <td>C0 - C1777</td>
+        <td>Control relay</td>
+        <td>Bit</td>
+      </tr>
+      <tr>
+        <td>SP0 - SP777</td>
+        <td>Special relay</td>
+        <td>Bit</td>
+      </tr>
+      <tr>
+        <td>T0 - T377</td>
+        <td>Timer status bit</td>
+        <td>Bit</td>
+      </tr>
+      <tr>
+        <td>TA0 - TA377</td>
+        <td>Timer current value</td>
+        <td>Word</td>
+      </tr>
+      <tr>
+        <td>CT0 - CT177</td>
+        <td>Counter status bit</td>
+        <td>Bit</td>
+      </tr>
+      <tr>
+        <td>CTA0 - CTA177</td>
+        <td>Counter current value</td>
+        <td>Word</td>
+      </tr>
+      <tr>
+        <td>V0 - V41237</td>
+        <td>Data word</td>
+        <td>Word</td>
+      </tr>
+      <tr>
+        <td>B0.0 - B41237.15</td>
+        <td>Bit of data word</td>
+        <td>Bit</td>
+      </tr>
+      <tr>
+        <td>S0 - S1777</td>
+        <td>Stage bit</td>
+        <td>Bit</td>
+      </tr>
+    </tbody>
+  </table>
+</blockquote>
+
+<h3><a name="Address Examples"></a>4.1 Address Examples</h3>
+The following examples may help to understand the Hardware Address formats
+described above: <br>
+ 
+<dl>
+  <dt><b><tt>@myPLC X0</tt></b></dt>
+    <dd>Input point X0 on a PLC called "myPLC".</dd>
+  <dt><b><tt>@PLC0 TA4</tt></b></dt>
+    <dd>Timer 4 current value on "PLC0"</dd>
+  <dt><b><tt>@PLC3 B40437.17</tt></b></dt>
+    <dd>The MSB (bit 15 decimal) of V-memory location 040437, which is X777 on
+      a DL250 CPU</dd>
+</dl>
+<hr>
+
+<h2><a name="Record Types Supported"></a>5. Record Types Supported</h2>
+
+<p>Device support is split into two separate modules, input records and output
+records.</p>
+
+<h3><a name="Input Record Types"></a>5.1 Input Record Types</h3>
+
+<p>All input records share a common read data cache, to reduce the amount of
+DirectNet traffic which could otherwise be generated by multiple reads of the
+same or nearby locations. When an input record is processed and the device
+support layer is asked to read the hardware, the data currently in the cache
+for the relevent location is examined. The scan period of the record is
+compared to the age of the cached data. If the cache data is old (ie was
+received more than half a scan period ago) then a read request is sent to the
+PLC for new data, but otherwise the cache data is returned immediately.</p>
+
+<p>Up to 16 words (32 bytes) will be read from the PLC from each request, so
+if any nearby locations are used then these data may be collected as well.
+Note that this cache size is larger than the 6 word/12 byte limit of the
+directNetBug support, thus the definition of "nearby" is different and the
+grouping of particular I/O locations will change. A record which has
+SCAN="I/O Intr" will be processed automatically whenever new data is available
+as a result of read requests made by other records (at least one record in the
+"local group" must get processed for this to work though).</p>
+
+<p>Support is provided for the following input record types:</p>
+
+<h4>bi - Binary Input</h4>
+
+<blockquote>
+  Reads from a single bit at the given PLC address. This is ideal for reading X
+  inputs, monitoring Y outputs, timer status bits or control relays, or for any
+  of the special purpose relays or bits in the PLC.</blockquote>
+
+<h4>mbbi - Multi-Bit Binary Input</h4>
+
+<blockquote>
+  Reads up to 16 bits at the given hardware address. The bit pattern cannot
+  cross a 16-bit word boundary, but may start anywhere within the PLC data word.
+  This restriction applies to the bit address types too; for example an input
+  address of X17 (octal = 15 decimal) should not be specified with NOBT=2. The
+  current implementation will silently return zero values for all bits beyond
+  the MSB of the word addressed.</blockquote>
+
+<h4>mbbiDirect - Multi-Bit Binary Input Direct</h4>
+
+<blockquote>
+  As mbbi.</blockquote>
+
+<h4>ai - Analogue Input</h4>
+
+<blockquote>
+  Reads a whole word from the given memory location. Any bit offsets in the
+  hardware address will be silently ignored. The use of Linear input conversion
+  (LINR="LINEAR") is not recommended, but Slope conversion (LINR="SLOPE") may be
+  used by setting the record's EOFF and ESLO fields. Values read by an IOC must
+  be stored in the PLC memory location as binary numbers, not as BCD. Also note
+  that the ADC input modules available for the 205 series PLCs cannot be
+  addressed directly without some intermediate ladder logic to de-multiplex the
+  channels (see <a href="#PLC Setup">2.3 PLC Setup</a>).</blockquote>
+
+<h3><a name="Output Record Types"></a>5.2 Output Record Types</h3>
+
+<p>Output record types have only a restricted range of PLC memory which they
+can address. This range does not include any of the PLC output space, just an
+area of general data storage from V02000 to V02777. The application designer
+must be careful to ensure that memory words written to by the PLC ladder logic
+are not also the destination of PLC output records, as the smallest writable
+object is a word. The IOC maintains its own buffer of the values in each
+output location which allows several records to point to different bits or bit
+ranges within the same V-memory location and for the correct combined output
+to be send to the PLC, although every record processing will result in a
+separate write request to the PLC. Note that there is no link between this
+output buffer and the read data cache described above for input records, other
+than via the PLC's memory.</p>
+
+<p>Support is currently provided for the following output record types:</p>
+
+<h4>bo - Binary Output</h4>
+
+<blockquote>
+  Writes to a single bit at the given hardware address.</blockquote>
+
+<h4>mbbo - Multi-Bit Binary Output</h4>
+
+<blockquote>
+  Writes to up to 16 bits at the given hardware address. The bit pattern
+  cannot cross a 16-bit word boundary, but may be placed anywhere within the
+  PLC data word. This restriction applies to the bit address types too; for
+  example an output address of X17 (octal = 15 decimal) cannot be specified
+  with NOBT=2. The current implementation will silently discard any bits
+  beyond the MSB of the word addressed.</blockquote>
+
+<h4>mbboDirect - Multi-Bit Binary Output Direct</h4>
+
+<blockquote>
+  As mbbo.</blockquote>
+
+<h4>ao - Analogue Output</h4>
+
+<blockquote>
+  Writes a whole word to the given memory location. Any bit offsets in the
+  hardware address will be silently ignored. The use of Linear output conversion
+  (LINR="LINEAR" etc.) is not recommended but Slope conversion (LINR="SLOPE")
+  may be used by setting the record's EOFF and ESLO fields. The value placed in
+  the PLC memory is in a binary format, not BCD. The ladder logic which is
+  required to drive a DAC is described in the "DL205 Analog I/O Modules" manual
+  from Automation Direct.</blockquote>
+
+<h3><a name="Alarms"></a>5.3 Alarms</h3>
+
+<p>If a communication with the PLC via ASYN fails, the record which caused the
+transaction to occur will be set into an alarm state. If the error is with the
+serial communication between ASYN and the PLC then the alarm severity used is
+<tt>INVALID_ALARM</tt>; if the error occurs within the IOC to ASYN communication
+path the severity <tt>MAJOR_ALARM</tt> is used. The alarm status will indicate
+<tt>WRITE_ALARM</tt> or <tt>READ_ALARM</tt> as appropriate.</p>
+
+<hr>
+
+<h2><a name="Status and Interaction"></a>6. Status and Interaction</h2>
+
+<p>Two kinds of interaction are possible within a running IOC.  The standard
+EPICS <tt>dbior</tt> I/O Report provides running status information collected
+from normal device support operations, and a program has been written that
+provides interactive read/write access to the PLC's memory via directNet
+operations.</p>
+
+<h3><a name="Status reports"></a>6.1 Status Reports</h3>
+
+<p>Device support report functions are provided which allow the current status
+of the read and write data caches to be studied. Different interest levels
+result in different reports being printed. The following table defines the
+information given for each interest level:</p>
+
+<blockquote>
+
+  <table border="1" bgcolor="#FFFFFF">
+    <thead>
+      <tr bgcolor="#000000">
+        <th><font color="#FFFFFF">Interest<br>
+          Level</font></th>
+        <th><font color="#FFFFFF">Information Displayed</font></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td align="center">0</td>
+        <td>Addresses of connected PLCs</td>
+      </tr>
+      <tr>
+        <td align="center">1</td>
+        <td>Communication statistics counters</td>
+      </tr>
+      <tr>
+        <td align="center">2</td>
+        <td>Read &amp; write cache summaries</td>
+      </tr>
+      <tr>
+        <td align="center">3</td>
+        <td>Read cache buffer contents</td>
+      </tr>
+      <tr>
+        <td align="center">4</td>
+        <td>Read cache record addressing</td>
+      </tr>
+    </tbody>
+  </table>
+</blockquote>
+
+<p>To access these status reports, use the standard <tt>dbior</tt> command at
+the vxWorks or IOC shell prompt. Without any parameters this produces interest
+level 0 information:</p>
+
+<blockquote>
+  <pre>epics&gt; <b>dbior</b>
+Driver: drvAsyn
+serials8n4-1 multiDevice:No canBlock:Yes autoConnect:Yes
+    enabled:Yes connected:Yes numberConnects 1
+    nDevices 0 nQueued 0 lockCount 0
+    exceptionActive: No exceptionUsers 12 exceptionNotifys 0
+    interposeInterfaceList
+        asynOctet pinterface 0x40055d00 drvPvt 0x8096750
+    interfaceList
+        asynCommon pinterface 0x40055760 drvPvt 0x8056a20
+        asynOctet pinterface 0x40055780 drvPvt 0x8056a20
+    Calling asynCommon.report
+Port serials8n4:4001: Connected
+Driver: drvDnAsyn
+PLC "test" via ASYN port "serials8n4-1" with DirectNet ID 1
+Device Support: devBiDnAsyn
+Device Support: devBoDnAsyn</pre>
+</blockquote>
+
+<p>For higher interest levels two parameters are required. The first is a driver
+or device support table name in double-quotes, and the second is the report
+interest level.  The table name parameter can be given as an empty string to get
+the report for all device and driver support layers:</p>
+
+<blockquote>
+  <pre>ioctest&gt; <b>dbior "",1</b>
+Driver: drvAsyn
+serials8n4-1 multiDevice:No canBlock:Yes autoConnect:Yes
+    enabled:Yes connected:Yes numberConnects 1
+    nDevices 0 nQueued 0 lockCount 0
+    exceptionActive: No exceptionUsers 12 exceptionNotifys 0
+    interposeInterfaceList
+        asynOctet pinterface 0x40055d00 drvPvt 0x8096750
+    interfaceList
+        asynCommon pinterface 0x40055760 drvPvt 0x8056a20
+        asynOctet pinterface 0x40055780 drvPvt 0x8056a20
+    Calling asynCommon.report
+Port serials8n4:4001: Connected
+                    fd: 10
+    Characters written: 11134
+       Characters read: 11120
+Driver: drvDnAsyn
+PLC "test" via ASYN port "serials8n4-1" with DirectNet ID 1
+    alarm = 0, nRdReqs = 511, nWrReqs = 0
+    nSuccess = 505, nDnFail = 1, nAsynFail = 5
+Device Support: devBiDnAsyn
+Device Support: devBoDnAsyn</pre>
+</blockquote>
+
+<p>In the level 1 report above, alarm indicates the alarm severity from the most
+recent communication with this PLC. nRdReqs and nWrReqs are the number of bitbus
+requests sent out for reading and writing respectively. nSuccess gives the
+number of responses with no errors; nDnFail counts any errors reported from the
+directNet protocol, and nAsynFail any reported in the ASYN communications
+path.</p>
+
+<blockquote>
+  <pre>epics> <b>dbior "",2</b>
+Driver: drvAsyn
+serials8n4-1 multiDevice:No canBlock:Yes autoConnect:Yes
+    enabled:Yes connected:Yes numberConnects 1
+    nDevices 0 nQueued 0 lockCount 0
+    exceptionActive: No exceptionUsers 12 exceptionNotifys 0
+    interposeInterfaceList
+        asynOctet pinterface 0x40055d00 drvPvt 0x8096750
+    interfaceList
+        asynCommon pinterface 0x40055760 drvPvt 0x8056a20
+        asynOctet pinterface 0x40055780 drvPvt 0x8056a20
+    Calling asynCommon.report
+Port serials8n4:4001: Connected
+                    fd: 10
+    Characters written: 12322
+       Characters read: 12316
+Driver: drvDnAsyn
+Device Support: devBiDnAsyn
+PLC "test" via ASYN port "serials8n4-1" with DirectNet ID 1
+    RdCache for V2000 - V2000 last updated at &lt;undefined&gt;
+    RdCache for V7751 - V7765 last updated at 2005-04-07 16:53:43.419840
+    RdCache for V7775 - V7777 last updated at 2005-04-07 16:53:37.196329
+    RdCache for V41200 - V41202 last updated at 2005-04-07 16:53:43.521602
+    RdCache for V40400 - V40400 last updated at &lt;undefined&gt;
+Device Support: devBoDnAsyn
+PLC "test" via ASYN port "serials8n4-1" with DirectNet ID 1
+    WrCache for V2000 - V2777 starts at 0x4040f3c8</pre>
+</blockquote>
+
+<p>Note that the same cache is used for all input record types, but only the
+bi device support provides a report function to avoid duplicate information
+being printed. The same is true of output record types, although much less
+information is stored in the device tables so the report outputs are much
+shorter.</p>
+
+<p>Interest levels 3 and 4 provide more detail about the values in the read
+cache buffer, and the input records which use each buffer.</p>
+
+<h3><a name="DirectNet Interact">6.2 DirectNet Interact</a></h3>
+
+<p>The interactive program <tt>DNI</tt> can be used to connect to a registered
+PLC and perform memory and I/O dumps and also modify PLC locations. This is
+started by typing <tt>DNI</tt> followed by the registered PLC name (which must
+be in double-quotes from the vxWorks shell):</p>
+
+<blockquote>
+  <pre>epics&gt; <b>DNI "DL250"</b>
+
+DirectNet Interaction program
+
+Connected to PLC "DL250" on ASYN port "dnAsyn0", DirectNet ID 1
+Enter a command, ? gives help
+DNI:DL250&gt; </pre>
+</blockquote>
+
+<p>The help command <b><tt>?</tt></b> lists most of the available commands:</p>
+
+<blockquote>
+  <pre>DNI:DL250&gt; <b>?</b>
+    The DNI commands available are:
+        ? [cmd]         - Display help [on cmd]
+        c &lt;plcName&gt;     - Connect to PLC &lt;plcName&gt;
+        d &lt;addr&gt; [n]    - Display PLC data at &lt;addr&gt;
+        m &lt;addr&gt;        - Modify PLC data at &lt;addr&gt;
+        q               - Quit DNI
+        r               - Print database I/O Report for all PLCs
+        s               - Get PLC communications status
+    &lt;addr&gt; is a PLC data type followed by the address, eg V02000
+    [n] is an optional element count
+    Type '? d' for a list of address types supported</pre>
+</blockquote>
+
+<p>Note that the <tt>unprotect</tt> command (see below) is not shown to prevent
+casual users from making changes to PLC variables that are not normally writable
+by the IOC.</p>
+
+<p>The command <b><tt>c</tt></b> can be used to connect to a different PLC without
+having to leave DNI:</p>
+
+<blockquote>
+  <pre>DNI:DL250&gt; <b>c PLC2</b>
+Connected to PLC "PLC2" on ASYN port "dnAsyn1", DirectNet ID 1
+DNI:PLC2&gt; </pre>
+</blockquote>
+
+<p>See how the PLC currently connected to is shown in the new command
+prompt.</p>
+
+<p>The display command <b><tt>d</tt></b> takes an address and an optional number of
+elements and shows the current value of those locations in the PLC:</p>
+
+<blockquote>
+  <pre>DNI:DL250&gt; <b>d V7750 027</b>
+
+V07750: 0000 0000 0000 0000 0000 0000 0000 0000
+V07760: 0000 0000 0000 0000 0000 30DF 0034 0053
+V07770: 0003 0001 0006 0009 0000 0004 0002
+DNI:DL250&gt; <b>d X0</b>
+
+X000: 1 1 1 0 0 1 0 1 0 0 0 0 0 0 0 0
+X020: 0 0 0 0 0 0 0 0
+DNI:DL250&gt; </pre>
+</blockquote>
+
+<p>Many different kinds of address can be used, and the output format reflects
+the kind of data to which the address refers - where the address is of an
+input, output or status bit the display uses binary digits, otherwise
+hexadecimal is used. For a full list of the available address types and the
+valid range, ask for help on the <b><tt>d</tt></b> command thus:</p>
+
+<blockquote>
+  <pre>DNI:DL250&gt; <b>? d</b>
+    The 'd' can command dump the contents of various PLC locations.
+    Valid DL250 PLC address types and ranges are:
+        V-memory        V00000 - V41237
+        Counter value   CTA000 - CTA177
+        Counter status   CT000 - CT177
+        Control relay    C0000 - C1777
+        Special relay    SP000 - SP777
+        Stage status     S0000 - S1777
+        Timer value      TA000 - TA377
+        Timer status      T000 - T377
+        Digital input     X000 - X777
+        Digital output    Y000 - Y777
+        Ladder program   L0000 - L1DFF
+        Scratchpad       Z0000 - Z5101
+    L and Z addresses are in hex, other addresses in octal.
+    Word data values are output in hex, Bit data in binary.</pre>
+</blockquote>
+
+<p>V-memory locations can be modified using the <b><tt>m</tt></b> command, which
+takes an address argument, displays the current location contents and prompts
+for a new data value:</p>
+
+<blockquote>
+  <pre>DNI:DL250&gt; <b>m 2000</b>
+V02000: 0x0004 &gt; <b>?</b>
+    The 'm' command modifies VMEM locations so addr must be octal.
+    Data values from the PLC are displayed in hex.
+    At the '&gt;' prompt, a number entry (with leading 0 or 0x for octal
+    or hex values respectively) will be written back to the location,
+    or the following subcommands can be used:
+        ^   - Set direction backwards (decreasing addresses)
+        =   - Set direction stationary (same address)
+        v   - Set direction forwards (increasing addresses)
+        -   - Move to preceeding address (direction setting is ignored)
+        +   - Move to following address (direction setting is ignored)
+        ?   - Prints this help message
+        .   - Quit (unrecognized commands also quit)
+V02000: 0x0004 &gt; <b>0x1234</b>
+V02001: 0x0002 &gt; <b>^</b>
+V02000: 0x1234 &gt; 
+End of unprotected area
+DNI:DL250&gt; </pre>
+</blockquote>
+
+<p>Pressing return without entering a number will move onto the next location
+in the current direction without writing anything back to the previous
+location. The subcommands can be given on their own, or immediately after a
+value to be written to the current location.  Setting the direction to be
+stationary makes it easy to monitor the value in a single location.  The
+<b><tt>m</tt></b> command exits when the current address runs beyond the protected
+V-memory range V2000 thru V2777.</p>
+
+<p>It is possible to change memory outside of the protected range by first
+giving the <tt>unprotect</tt> command:</p>
+
+<blockquote>
+  <pre>DNI:DL250&gt; <b>unprotect</b>
+VMEM Write protection is OFF
+DNI:DL250&gt; m V40500
+V40500: 0x0010 &gt; <b>0x30=</b>
+V40500: 0x0030 &gt; <b>.</b>
+DNI:DL250&gt; <b>u</b>
+VMEM Write protection is ON</pre>
+</blockquote>
+
+<p>The remaining commands provide additional PLC status information. The
+command <b><tt>r</tt></b> gives the standard EPICS Database I/O report for all
+registered PLCs:</p>
+
+<blockquote>
+  <pre>DNI:DL250&gt; <b>r</b>
+PLC "DL250" via ASYN port "dnAsyn0" with DirectNet ID 1
+    alarm = 0, nRdReqs = 2040, nWrReqs = 0
+    nSuccess = 2040, nDnFail = 0, nAsynFail = 0
+PLC "PLC2" via ASYN port "dnAsyn1" with DirectNet ID 1
+    alarm = 0, nRdReqs = 40, nWrReqs = 0
+    nSuccess = 40, nDnFail = 0, nAsynFail = 0</pre>
+</blockquote>
+
+<p>The <b><tt>s</tt></b> command requests and displays some communications
+statistics from the PLC.  If the number of erroneous communications or retries
+rises significantly there may be problems with the RS232 line to the PLC:</p>
+
+<blockquote>
+  <pre>DNI:DL250&gt; <b>s</b>
+ Last error code:  0x00
+ Prev error code:  0x00
+Successful comms:  7797
+ Erroneous comms:     0
+  Header retries:     0
+    Data retries:     0</pre>
+</blockquote>
+<hr>
+
+<h2><a name="Examples"></a>7. Examples</h2>
+
+<p>A PLC does not have to be in RUN mode for DirectNet communication to work,
+thus it is possible for the IOC to read and report the current run state of
+the PLC. An example database template and some MEDM screens are provided for
+the DL250 CPU to demonstrate this, and these can be used in applications if
+desired. They utilise the CPU special relays which are described in Appendix D
+of the DL205 User Manual. The error codes in Appendix B may also be a useful
+reference.</p>
+
+<h3><a name="Example Database"></a>7.1 DL250 Status database</h3>
+
+<p>The status database can be found in the db subdirectory of the support
+application, named <tt>DL250stat.db</tt>. It contains 28 records which scan the
+CPU's special relays (bi records) and system memory locations (ai records)
+relating to its run state and error flags. The record names all start with
+`<b><tt>$(name):</tt></b>', and their INP fields with `<b><tt>@$(plc)
+</tt></b>'. Records will enter an alarm state in the event of the PLC indicating
+errors. The following records are provided:</p>
+
+<blockquote>
+
+  <table border="1">
+    <thead>
+      <tr bgcolor="#000000">
+        <th><font color="#FFFFFF">Record Name</font></th>
+        <th><font color="#FFFFFF">Scan</font></th>
+        <th><font color="#FFFFFF">Description</font></th>
+        <th><font color="#FFFFFF">Notes</font></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>$(name):SP11</td>
+        <td>5 second</td>
+        <td>Forced run mode</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):SP12</td>
+        <td>I/O Intr</td>
+        <td>Terminal run mode</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):SP13</td>
+        <td>I/O Intr</td>
+        <td>Test run mode</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):SP15</td>
+        <td>I/O Intr</td>
+        <td>Test program mode</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):SP16</td>
+        <td>I/O Intr</td>
+        <td>Terminal program mode</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):SP17</td>
+        <td>I/O Intr</td>
+        <td>Forced stop mode</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):mode</td>
+        <td>I/O Intr</td>
+        <td>CPU mode</td>
+        <td>mbbi giving run mode as text</td>
+      </tr>
+      <tr>
+        <td>$(name):SP40</td>
+        <td>5 second</td>
+        <td>Critical error</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):SP41</td>
+        <td>I/O Intr</td>
+        <td>Warning</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):SP43</td>
+        <td>I/O Intr</td>
+        <td>Battery low</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):SP44</td>
+        <td>I/O Intr</td>
+        <td>Program memory error</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):SP45</td>
+        <td>I/O Intr</td>
+        <td>I/O error</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):SP46</td>
+        <td>I/O Intr</td>
+        <td>Communications error</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):SP47</td>
+        <td>I/O Intr</td>
+        <td>I/O config error</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):SP50</td>
+        <td>I/O Intr</td>
+        <td>Fault instruction</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):SP51</td>
+        <td>I/O Intr</td>
+        <td>Watch Dog timeout</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):SP52</td>
+        <td>I/O Intr</td>
+        <td>Grammatical error</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):V7751</td>
+        <td>5 second</td>
+        <td>FAULT error code</td>
+        <td>Scan disabled by SP50</td>
+      </tr>
+      <tr>
+        <td>$(name):V7752</td>
+        <td>10 second</td>
+        <td>Correct module ID</td>
+        <td>Scan disabled by SP47</td>
+      </tr>
+      <tr>
+        <td>$(name):V7753</td>
+        <td>10 second</td>
+        <td>Incorrect module ID</td>
+        <td>Scan disabled by SP47</td>
+      </tr>
+      <tr>
+        <td>$(name):V7754</td>
+        <td>10 second</td>
+        <td>Configuration Base &amp; Slot</td>
+        <td>Scan disabled by SP47</td>
+      </tr>
+      <tr>
+        <td>$(name):V7755</td>
+        <td>5 second</td>
+        <td>Fatal Error code</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):V7756</td>
+        <td>5 second</td>
+        <td>Major Error code</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):V7757</td>
+        <td>5 second</td>
+        <td>Minor Error code</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):V7765</td>
+        <td>10 second</td>
+        <td>Scan count</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):V7775</td>
+        <td>10 second</td>
+        <td>Scan time (msec)</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):V7776</td>
+        <td>10 second</td>
+        <td>Fastest scan</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>$(name):V7777</td>
+        <td>10 second</td>
+        <td>Slowest scan</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+</blockquote>
+
+<h3><a name="Example Display"></a>7.2 DL250 Status display screen</h3>
+
+<p>An MEDM display associated with the above database is installed into the adl
+subdirectory (this file is identical to the equivalently named display
+provided with the directNetBug support). <tt>DL250stat.adl</tt> expects
+a <b><tt>name</tt></b> macro to be defined exactly as in the database, and
+displays some of the critical PLC information from the associated records:</p>
+
+<blockquote>
+  <img src="DL250stat.gif" alt="DL250stat.adl MEDM display screen"
+  height="449" width="210"></blockquote>
+</body>
+</html>

@@ -1,0 +1,26 @@
+#CONFIG
+include $(EPICS_BASE)/configure/RULES
+
+# Library should be rebuilt because LIBOBJS may have changed.
+$(LIBNAME): ../Makefile
+
+# MEDM Rules from ctlsys
+ifdef T_A
+ifeq ($(findstring Host,$(VALID_BUILDS)),Host)
+
+INSTALL_ADL = $(INSTALL_LOCATION)/adl
+DIRECTORY_TARGETS += $(INSTALL_ADL)
+INSTALL_ADLS = $(ADLS:%=$(INSTALL_ADL)/%)
+
+buildInstall : $(INSTALL_ADLS)
+
+$(INSTALL_ADL)/%: %
+	@echo "Installing MEDM file $@"
+	@$(INSTALL) -d -m 644 $< $(dir $@)
+
+$(INSTALL_ADL)/%: ../%
+	@echo "Installing MEDM file $@"
+	@$(INSTALL) -d -m 644 $< $(dir $@)
+
+endif
+endif

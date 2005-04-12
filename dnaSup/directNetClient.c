@@ -143,6 +143,7 @@ static int dnpSelect(dnAsynClient *pclient, int target) {
     char reselect[4], *select = &reselect[1];
     int retries = MAX_RETRIES;
     int slaveId = target + SLAVEOFFSET;
+    int sendlen = 3;
     asynPrint(pau, ASYN_TRACE_FLOW,
 	      "dnpSelect(%p, %d)\n", pclient, target);
     
@@ -152,7 +153,7 @@ static int dnpSelect(dnAsynClient *pclient, int target) {
     reselect[3] = ENQCHAR;
     pau->timeout = ENQACKDELAY;
     do {
-	int reply = dnpSendGetc(pclient, select, 3);
+	int reply = dnpSendGetc(pclient, select, sendlen);
 	while (reply > 0 && reply != SEQCHAR) {
 	    asynPrint(pau, ASYN_TRACE_ERROR, "dnpSelect: Not SEQ - %d\n", reply);
 	    reply = dnpGetc(pclient);
@@ -163,6 +164,7 @@ static int dnpSelect(dnAsynClient *pclient, int target) {
 	    return DN_SUCCESS;
 	}
 	select = reselect;
+	sendlen = 4;
     } while (--retries > 0);
     return DN_SEL_FAIL;
 }

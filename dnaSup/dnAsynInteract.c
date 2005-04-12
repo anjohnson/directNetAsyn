@@ -219,7 +219,8 @@ static int dniSend(struct plcInteract *pInt) {
     epicsEventMustWait(pInt->replied);	/* wait for callback */
 
     if (pInt->msg.status) {
-	printf("\nDNI: Reply status = %d\n", pInt->msg.status);
+	printf("\nDNI: Reply status = %s\n",
+		dn_error_strings[pInt->msg.status]);
     }
     return pInt->msg.status;
 }

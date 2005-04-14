@@ -141,8 +141,8 @@ convert the readings back to binary for use by the IOC.</p>
 <h2><a name="Installation"></a>3. Installation</h2>
 
 <p>This software is a support application maintained in the EPICS CVS
-respository at <tt>modules/plc/directNetAsyn</tt>, and is published as a tar
-file on the EPICS Modules Download page. Installation is in two parts:</p>
+respository at <tt>epics/modules/plc/directNetAsyn</tt>, and is published as a
+tar file on the EPICS Modules Download page. Installation is in two parts:</p>
 
 <ul>
   <li><a href="#Site Installation">Site support installation</a> is done once
@@ -191,15 +191,13 @@ Installation</h3>
   support must make the following changes to the application concerned:</p>
 
 <ul>
-  <li>Add the following line to the application's config/RELEASE file (assumes
-    <tt>SUPPORT</tt> is already set):
-
+  <li>Add the following line to the application's configure/RELEASE file:
     <blockquote>
-      <pre>DIRECTNETASYN=$(SUPPORT)/directNetAsyn1-0</pre>
+      <pre>DIRECTNETASYN=/path/to/directNetAsyn1-0</pre>
     </blockquote>
   </li>
-  <li>Add this line somewhere in the application's dbd include list:
 
+  <li>Add this line somewhere in the application's dbd include list:
     <blockquote>
       <pre>include "devDnAsyn.dbd"</pre>
     </blockquote>
@@ -213,16 +211,16 @@ Installation</h3>
   </li>
 
   <li>Each PLC must also be registered with the EPICS IOC in its <tt>st.cmd</tt>
-    file, which names the PLC and gives its directNet slave ID number, and
-    specifies the name of the Asyn serial port to which it is connected. The
-    IOC's startup script thus must contain the following, before the call to
-    <tt>iocInit</tt>:
-
+    file.  The command used names the PLC, provides its directNet protocol link
+    address, and specifies the name of the Asyn serial port to which it is
+    connected. The IOC's startup script thus must contain the following, before
+    the call to <tt>iocInit</tt>:
     <blockquote>
-      <pre>createDnAsynPLC "<i>PLCname</i>", <i>ID</i>, "<i>port</i>"</pre>
+      <pre>createDnAsynPLC "<i>PLC Name</i>", <i>address</i>, "<i>Asyn Port</i>"</pre>
     </blockquote>
     
-    The directNet slave ID must match the setting configured in the PLC.
+    The <tt><i>address</i></tt> number in the above line must match the
+    directNet protocol Address configured in the PLC, which will usually be 1.
   </li>
 </ul>
 <hr>
@@ -320,15 +318,16 @@ convert records is to modify their DTYP string).</p>
 <h3><a name="Address Examples"></a>4.1 Address Examples</h3>
 The following examples may help to understand the Hardware Address formats
 described above: <br>
- 
+
 <dl>
   <dt><b><tt>@myPLC X0</tt></b></dt>
     <dd>Input point X0 on a PLC called "myPLC".</dd>
   <dt><b><tt>@PLC0 TA4</tt></b></dt>
     <dd>Timer 4 current value on "PLC0"</dd>
   <dt><b><tt>@PLC3 B40437.17</tt></b></dt>
-    <dd>The MSB (bit 15 decimal) of V-memory location 040437, which is X777 on
-      a DL250 CPU</dd>
+    <dd>The MSB (bit 15 decimal) of V-memory location 040437; this is where the
+      last input point X777 is found in the DL250 CPU's memory map, so B40437.17
+      is equivalent to V777</dd>
 </dl>
 <hr>
 
@@ -773,11 +772,11 @@ Successful comms:  7797
 <h2><a name="Examples"></a>7. Examples</h2>
 
 <p>A PLC does not have to be in RUN mode for DirectNet communication to work,
-thus it is possible for the IOC to read and report the current run state of
-the PLC. An example database template and some MEDM screens are provided for
-the DL250 CPU to demonstrate this, and these can be used in applications if
-desired. They utilise the CPU special relays which are described in Appendix D
-of the DL205 User Manual. The error codes in Appendix B may also be a useful
+thus it is possible for the IOC to read and report the current run state of the
+PLC. An example database template and some MEDM screens are provided for the
+DL250 CPU to demonstrate this, and these can be used in applications if desired.
+They point to the PLC CPU's special relays, which are described in Appendix D of
+the DL205 User Manual. The error codes in Appendix B may also be a useful
 reference.</p>
 
 <h3><a name="Example Database"></a>7.1 DL250 Status database</h3>

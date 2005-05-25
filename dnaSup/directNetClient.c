@@ -154,8 +154,9 @@ static int dnpSelect(dnAsynClient *pclient, int target) {
     pau->timeout = ENQACKDELAY;
     do {
 	int reply = dnpSendGetc(pclient, select, sendlen);
-	while (reply > 0 && reply != SEQCHAR) {
-	    asynPrint(pau, ASYN_TRACE_ERROR, "dnpSelect: Not SEQ - %d\n", reply);
+	while (reply > 0 && reply != SEQCHAR && reply != EOTCHAR) {
+	    asynPrint(pau, ASYN_TRACE_ERROR,
+		      "dnpSelect: Not SEQ/EOT - %d\n", reply);
 	    reply = dnpGetc(pclient);
 	}
 	if (reply == SEQCHAR &&

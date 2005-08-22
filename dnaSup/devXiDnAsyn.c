@@ -29,6 +29,7 @@ Version:
 #include <alarm.h>
 #include <epicsMutex.h>
 #include <epicsExport.h>
+#include <epicsMath.h>
 
 #include <aiRecord.h>
 #include <biRecord.h>
@@ -60,7 +61,7 @@ struct rdCache {
 
 struct dpvtIn {
     struct dbCommon *precord;
-    enum recType {AI, BI, MBBI, MBBID} type;
+    enum recType {AI, AIF, BI, MBBI, MBBID} type;
     unsigned char waiting;
     struct plcAddr plcAddr;
     struct plcInfo *plcInfo;
@@ -70,7 +71,7 @@ struct dpvtIn {
 };
 
 static const char *recTypeName[] = {
-    "ai", "bi", "mbbi", "mbbiDirect"
+    "ai", "ai[Float]", "bi", "mbbi", "mbbiDirect"
 };
 
 static void ioReport(int detail, struct plcInfo *pPlc) {
@@ -234,6 +235,7 @@ static long init_input(struct dbCommon *prec, enum recType type, struct link *pl
     struct plcInfo *pPlc;
     unsigned int addr;
     long status;
+    const int numWords = (type == AIF) ? 2 : 1;
     const int maxWords = DN_RDDATA_MAX / DN_PLCWORDLEN;
     
     if (devDnAsynDebug > 0)
@@ -267,17 +269,15 @@ static long init_input(struct dbCommon *prec, enum recType type, struct link *pl
 
     /* Search for an existing cache entry or one that can be extended */
     ppcache = &(pPlc->rdCache);
-    pcache = NULL;
-    while (*ppcache) {
-	if ((addr >= (*ppcache)->item.startAddr + (*ppcache)->item.nWords - maxWords) &&
-	    ((*ppcache)->item.startAddr + maxWords > addr)) {
+    while ((pcache = *ppcache)) {
+	if ((addr >= pcache->item.startAddr + pcache->item.nWords - maxWords) &&
+	    (addr + numWords <= pcache->item.startAddr + maxWords)) {
 	    if (devDnAsynDebug > 10)
 		printf ("devXiDnAsyn: Suitable rdCache entry found: V%o\n", 
-			(*ppcache)->item.startAddr - DNREFOFFSET);
-	    pcache = *ppcache;
+			pcache->item.startAddr - DNREFOFFSET);
 	    break;
 	}
-	ppcache = &(*ppcache)->pNext;
+	ppcache = &pcache->pNext;
     }
     
     if (pcache == NULL) {
@@ -298,7 +298,7 @@ static long init_input(struct dbCommon *prec, enum recType type, struct link *pl
 	
 	/* Initialise: cache entry */
 	pcache->item.startAddr = addr;
-	pcache->item.nWords = 1;
+	pcache->item.nWords = numWords;
 	pcache->item.active = FALSE;
 	pcache->item.msgMutex = epicsMutexMustCreate();
 	pcache->item.cacheMutex = epicsMutexMustCreate();
@@ -309,7 +309,7 @@ static long init_input(struct dbCommon *prec, enum recType type, struct link *pl
 	pMsg = &pcache->item.msg;
 	pMsg->port     = pPlc->port;
 	pMsg->cmd      = (pPlc->slaveId << 8) | READVMEM;
-	pMsg->len      = DN_PLCWORDLEN;
+	pMsg->len      = PLCWORDBYTES * numWords;
 	pMsg->addr     = addr;
 	pMsg->pdata    = pcache->item.msgData;
 	pMsg->callback = devXiDnCallback;
@@ -349,14 +349,14 @@ static long init_input(struct dbCommon *prec, enum recType type, struct link *pl
 	dpvt->recNext = pcache->item.recList;
 	pcache->item.recList = dpvt;
 	
-    } else if (addr >= pcache->item.startAddr + pcache->item.nWords) {
+    } else if (addr + numWords > pcache->item.startAddr + pcache->item.nWords) {
 	/* Need to extend the existing entry forwards */
 	if (devDnAsynDebug > 10)
 	    printf ("devXiDnAsyn: Extending entry forward to V%o\n", 
-		    addr - DNREFOFFSET);
+		    addr + numWords - 1 - DNREFOFFSET);
 	
-	/* Adjust entry length, in Bitbus message too */
-	pcache->item.nWords  = addr - pcache->item.startAddr + 1;
+	/* Adjust entry length, in message too */
+	pcache->item.nWords  = addr + numWords - pcache->item.startAddr;
 	pcache->item.msg.len = pcache->item.nWords * PLCWORDBYTES;
 	
 	/* Finally insert this record in item's record list */
@@ -392,6 +392,19 @@ static long init_ai(struct aiRecord *prec) {
     /* set linear conversion slope & offset, 12 bits assumed (WRONG?) */
     prec->eslo = (prec->eguf - prec->egul)/4095.0;
 
+    return 0;
+}
+
+static long init_aif(struct aiRecord *prec) {
+    long status;
+
+    if (devDnAsynDebug > 0)
+	printf ("devXiDnAsyn: Init aif called for \"%s\"\n", prec->name);
+
+    status = init_input((struct dbCommon *) prec, AIF, &prec->inp);
+    if (status)
+	return status;
+    
     return 0;
 }
 
@@ -489,6 +502,20 @@ static void get_data(struct dbCommon *prec) {
 	    ai->rval = value;
 	    break;
 
+	case AIF:
+	    ai=(struct aiRecord *)prec;
+	    {
+		union {
+		    unsigned long l;
+		    float f;
+		} convert;
+		convert.l = pitem->data[dpvt->plcAddr.vAddr+1 - pitem->startAddr] << 16;
+		convert.l |= value;
+		ai->val = convert.f;
+		ai->udf = isnan(ai->val);
+	    }
+	    break;
+
 	case BI:
 	    bi = (struct biRecord *)prec;
 	    bi->rval = value & bi->mask;
@@ -549,7 +576,7 @@ static long read_data(struct dbCommon *prec) {
 	    
 	    get_data(prec);
 	    epicsMutexUnlock(pitem->cacheMutex);
-	    return 0;
+	    return (dpvt->type == AIF) ? 2 : 0;
 	}
 	epicsMutexUnlock(pitem->cacheMutex);
 	/* Can't use cache data, must request a read */
@@ -599,18 +626,20 @@ static long read_data(struct dbCommon *prec) {
 	}
     }
 
-    return 0;
+    return (dpvt->type == AIF) ? 2 : 0;
 }
 
 
 /* Device Support Entry Tables */
 
 XXDSET devAiDnAsyn    = { 6,NULL,  NULL,init_ai,   get_ioint,read_data, NULL };
+XXDSET devAiFDnAsyn   = { 6,NULL,  NULL,init_aif,  get_ioint,read_data, NULL };
 XXDSET devBiDnAsyn    = { 5,report,NULL,init_bi,   get_ioint,read_data };
 XXDSET devMbbiDnAsyn  = { 5,NULL,  NULL,init_mbbi, get_ioint,read_data };
 XXDSET devMbbidDnAsyn = { 5,NULL,  NULL,init_mbbid,get_ioint,read_data };
 
 epicsExportAddress(dset, devAiDnAsyn);
+epicsExportAddress(dset, devAiFDnAsyn);
 epicsExportAddress(dset, devBiDnAsyn);
 epicsExportAddress(dset, devMbbiDnAsyn);
 epicsExportAddress(dset, devMbbidDnAsyn);

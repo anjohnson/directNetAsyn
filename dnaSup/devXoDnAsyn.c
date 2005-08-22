@@ -47,9 +47,9 @@ struct wrCache {    /* wrCache is a simple array of all the writable memory */
 
 struct dpvtOut {
     struct plcMessage msg;
-    char msgData[DN_PLCWORDLEN];
+    char msgData[DN_PLCWORDLEN*2];
     struct dbCommon *precord;
-    enum recType {AO, BO, MBBO, MBBOD} type;
+    enum recType {AO, AOF, BO, MBBO, MBBOD} type;
     struct plcAddr plcAddr;
     epicsMutexId mutex;
     struct wrItem *wrItem;
@@ -91,6 +91,7 @@ static long init_output(struct dbCommon *prec, enum recType type, struct link *p
     struct plcInfo *pPlc;
     struct plcMessage *pMsg;
     struct wrCache *pcache;
+    const int numWords = (type == AOF) ? 2 : 1;
     long status;
     
     if (devDnAsynDebug > 0)
@@ -125,7 +126,7 @@ static long init_output(struct dbCommon *prec, enum recType type, struct link *p
     }
     
     if ((dpvt->plcAddr.vAddr < WRITEMINADDR+DNREFOFFSET) ||
-	(dpvt->plcAddr.vAddr > WRITEMAXADDR+DNREFOFFSET)) {
+	(dpvt->plcAddr.vAddr + numWords >= WRITEMAXADDR+DNREFOFFSET)) {
 	errlogPrintf("devXoDnAsyn: PLC address write-protected for \"%s\"\n",
 		     prec->name);
 	prec->pact = TRUE;
@@ -149,7 +150,7 @@ static long init_output(struct dbCommon *prec, enum recType type, struct link *p
     dpvt->wrItem = &pcache->item[dpvt->plcAddr.vAddr - WRITEMINADDR+DNREFOFFSET];
     
     pMsg->cmd   = (pPlc->slaveId << 8) | WRITEVMEM;
-    pMsg->len   = DN_PLCWORDLEN;
+    pMsg->len   = numWords * DN_PLCWORDLEN;
     pMsg->addr  = dpvt->plcAddr.vAddr;
     pMsg->pdata = dpvt->msgData;
     
@@ -163,6 +164,19 @@ static long init_ao(struct aoRecord *prec) {
 	printf ("devXoDnAsyn: Init ao invoked\n");
     
     status = init_output((struct dbCommon *) prec, AO, &prec->out);
+    if (status)
+	prec->pact = TRUE;	/* Error, prevent processing */
+    
+    return status;
+}
+
+static long init_aoflt(struct aoRecord *prec) {
+    long status;
+    
+    if (devDnAsynDebug > 0)
+	printf ("devXoDnAsyn: Init ao_float invoked\n");
+    
+    status = init_output((struct dbCommon *) prec, AOF, &prec->out);
     if (status)
 	prec->pact = TRUE;	/* Error, prevent processing */
     
@@ -241,6 +255,23 @@ static void setup_write(struct dbCommon *prec) {
 	case AO:
 	    ao = (struct aoRecord *) prec;
 	    pitem->word = ao->rval;
+	    break;
+	
+	case AOF:
+	    ao = (struct aoRecord *) prec;
+	    {
+		union {
+		    float f;
+		    unsigned long l;
+		} convert;
+		convert.f = ao->oval;
+		mask = convert.l;
+	    }
+	    pitem->word = mask & 0xffff;
+	    mask = (mask >> 16) & 0xffff;
+	    (pitem + 1)->word = mask;
+	    dpvt->msgData[2] = mask & 0xff;
+	    dpvt->msgData[3] = (mask >> 8) & 0xff;
 	    break;
 	
 	case BO:
@@ -352,11 +383,13 @@ static long write_data(struct dbCommon *prec) {
 /* Device Support Entry Tables */
 
 XXDSET devAoDnAsyn    = { 6,NULL,  NULL,init_ao,    NULL, write_data, NULL };
+XXDSET devAoFDnAsyn   = { 6,NULL,  NULL,init_aoflt, NULL, write_data, NULL };
 XXDSET devBoDnAsyn    = { 5,report,NULL,init_bo,    NULL, write_data };
 XXDSET devMbboDnAsyn  = { 5,NULL,  NULL,init_mbbo,  NULL, write_data };
 XXDSET devMbbodDnAsyn = { 5,NULL,  NULL,init_mbbod, NULL, write_data };
 
 epicsExportAddress(dset, devAoDnAsyn);
+epicsExportAddress(dset, devAoFDnAsyn);
 epicsExportAddress(dset, devBoDnAsyn);
 epicsExportAddress(dset, devMbboDnAsyn);
 epicsExportAddress(dset, devMbbodDnAsyn);

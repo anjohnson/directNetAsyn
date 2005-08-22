@@ -68,6 +68,7 @@ static const struct plcIoType plcIoData[] = {
     {"CTA", 3,  8, WORD, READVMEM, 2,  8, 01001,    127, "Counter value"},
     {"CT",  3,  8, BIT,  READOUTS, 1,  2, 0x001,    127, "Counter status"},
     {"C",   4,  8, BIT,  READOUTS, 1,  2, 0x181,   1023, "Control relay"},
+    {"F",   5,  8, WORD, READVMEM, 4,  2, 00001, 041237, "Floating point"},
     {"SP",  3,  8, BIT,  READINPS, 1,  2, 0x181,    511, "Special relay"},
     {"S",   4,  8, BIT,  READOUTS, 1,  2, 0x281,   1023, "Stage status"},
     {"TA",  3,  8, WORD, READVMEM, 2,  8, 00001,    255, "Timer value"},
@@ -305,6 +306,15 @@ static void dniDump(struct plcInteract *pInt, const char *paddr,
 	    }
 	    switch (pio->wordLen) {
 	    unsigned int datum;
+	    case 4:
+		datum = ((0xff & pMsg->pdata[i*4+3]) << 24) +
+			((0xff & pMsg->pdata[i*4+2]) << 16) +
+			((0xff & pMsg->pdata[i*4+1]) << 8) +
+			 (0xff & pMsg->pdata[i*4  ]);
+		printf(" %8.8X=%-8.5g", datum, *(float *)&datum);
+		addr += 2;
+		break;
+		
 	    case 3:
 		datum = ((0xff & pMsg->pdata[i*3+2]) << 16) +
 			((0xff & pMsg->pdata[i*3+1]) << 8) +

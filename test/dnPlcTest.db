@@ -152,3 +152,72 @@ record(mbbo, "$(name):V2000:0-3")
 	field(FTVL,"14")
 	field(FFVL,"15")
 }
+
+record(ao, "$(name):F2004out")
+{
+	field(SCAN,"Passive")
+	field(DTYP,"DirectNet PLC via ASYN, IEEE Float")
+	field(OUT, "@$(plc) V2004")
+	field(FLNK, "$(name):F2004in")
+}
+record(ai, "$(name):F2004in")
+{
+	field(SCAN,"Passive")
+	field(DTYP,"DirectNet PLC via ASYN, IEEE Float")
+	field(INP, "@$(plc) V2004")
+}
+
+record(ao, "$(name):A:out")
+{
+	field(SCAN,"Passive")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(OUT, "@$(plc) V2001")
+	field(FLNK, "$(name):A:in")
+}
+record(ao, "$(name):B:out")
+{
+	field(SCAN,"Passive")
+	field(DTYP,"DirectNet PLC via ASYN")
+	field(OUT, "@$(plc) V2002")
+	field(FLNK, "$(name):B:in")
+}
+record(ai, "$(name):A:in")
+{
+	field(SCAN,"Passive")
+	field(DTYP,"DirectNet PLC via ASYN, IEEE Float")
+	field(INP, "@$(plc) V3000")
+	field(MDEL, "-1")
+	field(PREC, "5")
+}
+record(ai, "$(name):B:in")
+{
+	field(SCAN,"Passive")
+	field(DTYP,"DirectNet PLC via ASYN, IEEE Float")
+	field(INP, "@$(plc) V3002")
+	field(MDEL, "-1")
+	field(PREC, "5")
+}
+record(ai, "$(name):A+B:in")
+{
+	field(SCAN,"I/O Intr")
+	field(DTYP,"DirectNet PLC via ASYN, IEEE Float")
+	field(INP, "@$(plc) V3004")
+	field(MDEL, "-1")
+	field(PREC, "5")
+}
+record(ai, "$(name):A*B:in")
+{
+	field(SCAN,"I/O Intr")
+	field(DTYP,"DirectNet PLC via ASYN, IEEE Float")
+	field(INP, "@$(plc) V3006")
+	field(MDEL, "-1")
+	field(PREC, "5")
+}
+record(ai, "$(name):A/B:in")
+{
+	field(SCAN,"I/O Intr")
+	field(DTYP,"DirectNet PLC via ASYN, IEEE Float")
+	field(INP, "@$(plc) V3010")
+	field(MDEL, "-1")
+	field(PREC, "5")
+}

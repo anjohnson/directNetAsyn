@@ -17,7 +17,7 @@ directNetAsyn</h1>
   <a href="mailto:anj@aps.anl.gov">Andrew Johnson</a>
 </address>
 <br>
-Release 1-0, April 2005</center>
+Release 1-1, August 2005</center>
 
 <h2>Contents</h2>
 <a href="#Introduction">1. Introduction</a> <br>
@@ -69,6 +69,10 @@ work, but these have not been explored.</p>
 <dl>
   <dt>Release 1-0</dt>
     <dd>First release</dd>
+  <dt>Release 1-1</dt>
+    <dd>* Removed error messages when no protocol error occurred (<tt>dnpSelect:
+      Not SEQ - 4</tt>)</dd>
+    <dd>Added support for I/O of IEEE Floating Point values in V-memory.</dd>
 </dl>
 
 <h3><a name="Differences to directNetMpf"></a>1.2 Differences to
@@ -91,7 +95,7 @@ these sections:</p>
 
 <h3><a name="Software"></a>2.1 Software</h3>
 
-<p>Release 1-0 of the software has been built with EPICS base R3.14.7,
+<p>Release 1-1 of the software has been built with EPICS base R3.14.7,
 although it should build with R3.14.6 and possibly against earlier versions
 too.  It was designed and tested against asynDriver R4-0, and should work with
 all newer R4 versions as well.</p>
@@ -128,7 +132,7 @@ input records and so on.</p>
 <p>The PLC program must communicate with the IOC in binary, which may require
 additional programming steps as the PLC arithmetic is often performed with BCD
 numbers. This software does not support conversions to or from BCD, nor can it
-yet understand data in the PLC's Double or Floating Point formats.</p>
+yet understand data in the PLC's Double word format.</p>
 
 <p>Some ladder logic code is required to support the reading of ADC inputs by
 the IOC - see the DL205 Analog I/O Modules manual for details. If the ADC
@@ -165,13 +169,13 @@ applications. To install the software:</p>
     <blockquote>
       <pre>% <b>cd /usr/local/iocapps/R3.14.7/modules</b>
 % <b>mkdir plc; cd plc</b>
-% <b>gnutar xfz directNetAsyn1-0.tar.gz</b></pre>
+% <b>gnutar xfz directNetAsyn1-1.tar.gz</b></pre>
     </blockquote>
   </li>
   <li>Next edit the configure/RELEASE file to set the correct paths
     for the definitions of <tt>ASYN</tt> and <tt>EPICS_BASE</tt>:
     <blockquote>
-      <pre>% <b>cd directNetAsyn1-0/configure</b>
+      <pre>% <b>cd directNetAsyn1-1/configure</b>
 % <b>vi RELEASE</b></pre>
     </blockquote>
   </li>
@@ -193,7 +197,7 @@ Installation</h3>
 <ul>
   <li>Add the following line to the application's configure/RELEASE file:
     <blockquote>
-      <pre>DIRECTNETASYN=/path/to/directNetAsyn1-0</pre>
+      <pre>DIRECTNETASYN=/path/to/directNetAsyn1-1</pre>
     </blockquote>
   </li>
 
@@ -228,13 +232,14 @@ Installation</h3>
 <h2><a name="Hardware Address Formats"></a>4. Hardware Address Formats</h2>
 
 <p>The device type (DTYP) field of a PLC record should be set to
-<tt>"<b>DirectNet PLC via ASYN</b>"</tt>. The basic INP or OUT record hardware
-address is an Instrument I/O type and comprises a string which starts with an
-<b><tt>@</tt></b> character followed by the name of the PLC being addressed.
-This name must have been registered with the IOC using <tt>createDnAsynPLC</tt>
-in the startup file.  Note that although the name may contain spaces this is
-not recommended, and that upper case letters are regarded as different to
-lower case in the name.</p>
+<tt>"<b>DirectNet PLC via ASYN</b>"</tt>, or for analog I/O using floating point
+to <tt>"<b>DirectNet PLC via ASYN, IEEE Float</b>"</tt>. The basic INP or OUT
+record hardware address is an Instrument I/O type and comprises a string which
+starts with an <b><tt>@</tt></b> character followed by the name of the PLC being
+addressed. This name must have been registered with the IOC using
+<tt>createDnAsynPLC</tt> in the startup file.  Note that although the name may
+contain spaces this is not recommended, and that upper case letters are regarded
+as different to lower case in the name.</p>
 
 <p>The name must be followed by a space, and the remaining string is examined by
 the device support for the corresponding address within the PLC. This address
@@ -382,15 +387,35 @@ as a result of read requests made by other records (at least one record in the
 
 <h4>ai - Analogue Input</h4>
 
-<blockquote>
-  Reads a whole word from the given memory location. Any bit offsets in the
-  hardware address will be silently ignored. The use of Linear input conversion
-  (LINR="LINEAR") is not recommended, but Slope conversion (LINR="SLOPE") may be
-  used by setting the record's EOFF and ESLO fields. Values read by an IOC must
-  be stored in the PLC memory location as binary numbers, not as BCD. Also note
-  that the ADC input modules available for the 205 series PLCs cannot be
-  addressed directly without some intermediate ladder logic to de-multiplex the
-  channels (see <a href="#PLC Setup">2.3 PLC Setup</a>).</blockquote>
+<p>
+There are two types of ai support, depending on the format of the data stored in
+the PLC's V-memory. The data may either be in binary format, or in IEEE floating
+point format.</p>
+
+<dl>
+
+<dt>Binary format:</dt>
+<dd>
+  Reads a 16-bit word from the given memory location, interpreting it as a
+  binary integer. Any bit offsets in the hardware address will be silently
+  ignored. The use of Linear input conversion (LINR="LINEAR") is not
+  recommended, but Slope conversion (LINR="SLOPE") may be used by setting the
+  record's EOFF and ESLO fields. Values read by an IOC must be stored in the PLC
+  memory location as binary numbers, not as BCD. Also note that the ADC input
+  modules available for the 205 series PLCs cannot be addressed directly without
+  some intermediate ladder logic to de-multiplex the channels (see <a href="#PLC
+  Setup">2.3 PLC Setup</a>).</dd>
+
+<dt>Floating point format</dt>
+<dd>
+  Reads two 16-bit words, from the given memory location and the one immediately
+  following it, and interprets these as a single floating point value. Any bit
+  offsets in the hardware address will be silently ignored. Engineering units
+  conversions are not preformed, nor is input smoothing (SMOO field). To use
+  this support, the record's DTYP field must be set to <tt>"<b>DirectNet PLC via
+  ASYN, IEEE Float</b>"</tt>.</dd>
+
+</dl>
 
 <h3><a name="Output Record Types"></a>5.2 Output Record Types</h3>
 
@@ -431,14 +456,34 @@ than via the PLC's memory.</p>
 
 <h4>ao - Analogue Output</h4>
 
-<blockquote>
-  Writes a whole word to the given memory location. Any bit offsets in the
-  hardware address will be silently ignored. The use of Linear output conversion
-  (LINR="LINEAR" etc.) is not recommended but Slope conversion (LINR="SLOPE")
-  may be used by setting the record's EOFF and ESLO fields. The value placed in
-  the PLC memory is in a binary format, not BCD. The ladder logic which is
-  required to drive a DAC is described in the "DL205 Analog I/O Modules" manual
-  from Automation Direct.</blockquote>
+<p>
+There are two types of ao support, depending on the format of the data to be
+stored in the PLC's V-memory. The data may be stored either in binary format, or
+in IEEE floating point format.</p>
+
+<dl>
+
+<dt>Binary format:</dt>
+<dd>
+  Converts the output value into a single 16-bit integer and writes this word to
+  the given PLC memory location. Any bit offsets in the hardware address will be
+  silently ignored. The use of Linear output conversion (LINR="LINEAR" etc.) is
+  not recommended but Slope conversion (LINR="SLOPE") may be used by setting the
+  record's EOFF and ESLO fields. The value placed in the PLC memory is in a
+  binary format, not BCD. The ladder logic which is required to drive a DAC is
+  described in the "DL205 Analog I/O Modules" manual from Automation
+  Direct.</dd>
+
+<dt>Floating point format</dt>
+<dd>
+  Writes the output value as an IEEE floating point value to the given memory
+  location and the one immediately following it. Any bit offsets in the hardware
+  address will be silently ignored. Engineering units conversions are not
+  preformed, nor the conversion adjustments (ASLO, AOFF). To use this support,
+  the record's DTYP field must be set to <tt>"<b>DirectNet PLC via ASYN, IEEE
+  Float</b>"</tt>.</dd>
+
+</dl>
 
 <h3><a name="Alarms"></a>5.3 Alarms</h3>
 

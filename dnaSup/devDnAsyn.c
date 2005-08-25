@@ -140,8 +140,10 @@ int epicsShareAPI dnAsynAddr(struct dbCommon *prec, struct plcAddr *paddr, struc
     } else {
 	paddr->vAddr = addr + aTypes[addrType].offset + DNREFOFFSET;
 	
-	if (*parse == '.') paddr->bitNum = strtoul(++parse, &parse, 8);
-	else paddr->bitNum = 0;
+	if (*parse == '.') {
+	    parse++;
+	    paddr->bitNum = strtoul(parse, &parse, 8);
+	} else paddr->bitNum = 0;
     }
     
     return 0;

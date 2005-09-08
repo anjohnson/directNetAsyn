@@ -70,9 +70,13 @@ work, but these have not been explored.</p>
   <dt>Release 1-0</dt>
     <dd>First release</dd>
   <dt>Release 1-1</dt>
-    <dd>* Removed error messages when no protocol error occurred (<tt>dnpSelect:
+    <dd> Removed error messages when no protocol error occurred (<tt>dnpSelect:
       Not SEQ - 4</tt>)</dd>
     <dd>Added support for I/O of IEEE Floating Point values in V-memory.</dd>
+  <dt>Release 1-2</dt>
+    <dd>DL06 PLCs can send EOT in response to a header; added a new low-level
+      error number and some retry logic to handle this case.</dd>
+    <dd>Added a version number command "v" to DNI, prints CVS tag name.</dd>
 </dl>
 
 <h3><a name="Differences to directNetMpf"></a>1.2 Differences to
@@ -675,6 +679,7 @@ DNI:DL250&gt; </pre>
         q               - Quit DNI
         r               - Print database I/O Report for all PLCs
         s               - Get PLC communications status
+        v               - Print directNetAsyn Version
     &lt;addr&gt; is a PLC data type followed by the address, eg V02000
     [n] is an optional element count
     Type '? d' for a list of address types supported</pre>

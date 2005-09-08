@@ -159,6 +159,7 @@ static void dniHelp(const char *pcmd) {
 	     "\tq\t\t- Quit DNI\n"
 	     "\tr\t\t- Print database I/O Report for all PLCs\n"
 	     "\ts\t\t- Get PLC communications status\n"
+	     "\tv\t\t- Print directNetAsyn Version"
 	     "    <addr> is a PLC data type followed by the address, eg V02000\n"
 	     "    [n] is an optional element count\n"
 	     "    Type '? d' for a list of address types supported");
@@ -581,6 +582,11 @@ int DNI(const char *pname) {
 	    /* A hidden command, allows writes to any VMEM addr */
 	    protect = strcmp(argv[0], "unprotect");
 	    printf("VMEM Write protection is %s\n", protect ? "ON" : "OFF");
+	    break;
+	    
+	case 'v':
+	    printf("directNetAsyn CVS Tag Name: %s\n",
+		   "$Name$");
 	    break;
 	    
 	default:

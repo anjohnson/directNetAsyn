@@ -46,9 +46,11 @@ const char *dn_error_strings[] = {
     "DN_HDR_FAIL",
     "DN_RDBLK_FAIL",
     "DN_WRBLK_FAIL",
-    "DN_NOT_EOT"
+    "DN_NOT_EOT",
+    "DN_GOT_EOT"
 };
 
+int dnAsynMaxRetries = MAX_RETRIES;
 
 /* asynOctet interface routines */
 
@@ -141,7 +143,7 @@ static char dnpLRC(dnAsynClient *pclient, const char *pdata, int len) {
 static int dnpSelect(dnAsynClient *pclient, int target) {
     asynUser *pau = pclient->pau;
     char reselect[4], *select = &reselect[1];
-    int retries = MAX_RETRIES;
+    int retries = dnAsynMaxRetries;
     int slaveId = target + SLAVEOFFSET;
     int sendlen = 3;
     asynPrint(pau, ASYN_TRACE_FLOW,
@@ -156,7 +158,8 @@ static int dnpSelect(dnAsynClient *pclient, int target) {
 	int reply = dnpSendGetc(pclient, select, sendlen);
 	while (reply > 0 && reply != SEQCHAR && reply != EOTCHAR) {
 	    asynPrint(pau, ASYN_TRACE_ERROR,
-		      "dnpSelect: Not SEQ/EOT - %d\n", reply);
+		      "dnpSelect: Not SEQ/EOT - %d (retries = %d)\n",
+		      reply, retries);
 	    reply = dnpGetc(pclient);
 	}
 	if (reply == SEQCHAR &&
@@ -172,7 +175,7 @@ static int dnpSelect(dnAsynClient *pclient, int target) {
 
 static int dnpHeader(dnAsynClient *pclient, int cmd, int addr, int len) {
     asynUser *pau = pclient->pau;
-    int reply, retries = MAX_RETRIES;
+    int reply, retries = dnAsynMaxRetries;
     char header[HEADER_LEN];
     asynPrint(pau, ASYN_TRACE_FLOW,
 	      "dnpHeader(%p, %d, %d, %d)\n", pclient, cmd, addr, len);
@@ -187,7 +190,12 @@ static int dnpHeader(dnAsynClient *pclient, int cmd, int addr, int len) {
     do {
 	reply = dnpSendGetc(pclient, header, HEADER_LEN);
 	if (reply == ACKCHAR) return DN_SUCCESS;
+	if (reply == EOTCHAR) return DN_GOT_EOT;
     } while (reply == NAKCHAR && --retries > 0);
+    if (reply != NAKCHAR)
+	asynPrint(pau, ASYN_TRACE_ERROR,
+		  "dnpHeader: Not ACK/NAK/EOT - %d (retries = %d)\n",
+		  reply, retries);
     return DN_HDR_FAIL;
 }
 
@@ -195,7 +203,7 @@ static int dnpWrBlk(dnAsynClient *pclient, const char *pdata, int len) {
     asynUser *pau = pclient->pau;
     char block[BLOCK_LEN + 3];
     int blen = len;
-    int reply, retries = MAX_RETRIES;
+    int reply, retries = dnAsynMaxRetries;
     asynPrint(pau, ASYN_TRACE_FLOW,
 	      "dnpWrBlk(%p, %p, %d)\n", pclient, pdata, len);
     
@@ -217,7 +225,7 @@ static int dnpWrBlk(dnAsynClient *pclient, const char *pdata, int len) {
 static int dnpRdBlk(dnAsynClient *pclient, char *pdata, int len) {
     asynUser *pau = pclient->pau;
     int blen = len;
-    int reply, retries = MAX_RETRIES;
+    int reply, retries = dnAsynMaxRetries;
     asynPrint(pau, ASYN_TRACE_FLOW,
 	      "dnpRdBlk(%p, %p, %d)\n", pclient, pdata, len);
     
@@ -255,38 +263,40 @@ static void dnpEOT(dnAsynClient *pclient) {
 /* Protocol interface routines */
 
 static int dnpWrite(dnAsynClient *pclient, int cmd, int addr, const char *pdata, int len) {
-    int status;
+    int status, retries = dnAsynMaxRetries;
     asynPrint(pclient->pau, ASYN_TRACE_FLOW,
 	      "dnpWrite(%p)\n", pclient);
-    
-    status = dnpHeader(pclient, cmd, addr, len);
-    if (status == DN_SUCCESS) {
-	do {
-	    status = dnpWrBlk(pclient, pdata, len);
-	    len -= BLOCK_LEN;
-	    pdata += BLOCK_LEN;
-	} while ((status == DN_SUCCESS) && (len > 0));
-    }
-    dnpEOT(pclient);
+    do {
+	status = dnpHeader(pclient, cmd, addr, len);
+	if (status == DN_SUCCESS) {
+	    do {
+		status = dnpWrBlk(pclient, pdata, len);
+		len -= BLOCK_LEN;
+		pdata += BLOCK_LEN;
+	    } while ((status == DN_SUCCESS) && (len > 0));
+	}
+	dnpEOT(pclient);
+    } while ((status == DN_GOT_EOT) && (--retries > 0));
     return status;
 }
 
 static int dnpRead(dnAsynClient *pclient, int cmd, int addr, char *pdata, int len) {
-    int status;
+    int status, retries = dnAsynMaxRetries;
     asynPrint(pclient->pau, ASYN_TRACE_FLOW,
 	      "dnpRead(%p, %d, %d, %p, %d)\n", pclient, cmd, addr, pdata, len);
-    
-    status = dnpHeader(pclient, cmd, addr, len);
-    if (status == DN_SUCCESS) {
-	do {
-	    status = dnpRdBlk(pclient, pdata, len);
-	    len -= BLOCK_LEN;
-	    pdata += BLOCK_LEN;
-	} while ((status == DN_SUCCESS) && (len > 0));
-    }
-    if ((status == DN_SUCCESS) &&
-	(dnpGetc(pclient) != EOTCHAR)) status = DN_NOT_EOT;
-    dnpEOT(pclient);
+    do {
+	status = dnpHeader(pclient, cmd, addr, len);
+	if (status == DN_SUCCESS) {
+	    do {
+		status = dnpRdBlk(pclient, pdata, len);
+		len -= BLOCK_LEN;
+		pdata += BLOCK_LEN;
+	    } while ((status == DN_SUCCESS) && (len > 0));
+	}
+	if ((status == DN_SUCCESS) &&
+	    (dnpGetc(pclient) != EOTCHAR)) status = DN_NOT_EOT;
+	dnpEOT(pclient);
+    } while ((status == DN_GOT_EOT) && (--retries > 0));
     return status;
 }
 

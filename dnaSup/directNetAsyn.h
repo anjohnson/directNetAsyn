@@ -39,7 +39,8 @@ Version:
 
 /* status values */
 
-/* DN_SUCCESS must be zero */
+/* DN_SUCCESS must be zero.
+ * Values must match dn_error_strings in directnetClient.c */
 #define DN_SUCCESS	0
 #define DN_INTERNAL	1
 #define DN_TIMEOUT	2
@@ -49,6 +50,7 @@ Version:
 #define DN_RDBLK_FAIL	6
 #define DN_WRBLK_FAIL	7
 #define DN_NOT_EOT	8
+#define DN_GOT_EOT	9
 
 /* timeouts in seconds */
 

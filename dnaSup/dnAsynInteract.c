@@ -173,8 +173,8 @@ static void dniHelp(const char *pcmd) {
 	    char msgbuf[80];
 	    
 	    sprintf(msgbuf, "\t%-*s %s%%0%d%c - %s%%0%d%c\n",
-		    23 - pio->addrWidth - strlen(pio->letters), pio->desc,
-		    pio->letters, pio->addrWidth, addrFormat,
+		    (int)(23 - pio->addrWidth - strlen(pio->letters)),
+		    pio->desc, pio->letters, pio->addrWidth, addrFormat,
 		    pio->letters, pio->addrWidth, addrFormat);
 	    printf(msgbuf, 0, pio->maxAddr);
 	}
@@ -312,7 +312,7 @@ static void dniDump(struct plcInteract *pInt, const char *paddr,
 			((0xff & pMsg->pdata[i*4+2]) << 16) +
 			((0xff & pMsg->pdata[i*4+1]) << 8) +
 			 (0xff & pMsg->pdata[i*4  ]);
-		printf(" %8.8X=%-8.5g", datum, *(float *)&datum);
+		printf(" %8.8X=%-8.5g", datum, *(float *)(char *)&datum);
 		addr += 2;
 		break;
 		

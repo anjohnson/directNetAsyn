@@ -1,15 +1,19 @@
-# Makefile for Asyn dg535 support
-#
-# Created by mrk on Wed Jun 16 13:03:13 2004
-# Based on the Asyn devGpib template
+# Makefile for directNetAsyn
 
 TOP = .
 include $(TOP)/configure/CONFIG
 
 DIRS := configure
+
 DIRS += dnaSup
+dnaSup_DEPEND_DIRS = configure
+
 DIRS += DL250plc
+
 DIRS += test
+test_DEPEND_DIRS = dnaSup
+
 DIRS += iocBoot
+iocBoot_DEPEND_DIRS = configure
 
 include $(TOP)/configure/RULES_TOP

@@ -62,7 +62,7 @@ static int dnpSend(dnAsynClient *pclient, const char *pdata, int len) {
 	      "dnpSend(%p, %p, %d)\n", pclient, pdata, len);
     
     pau->timeout += len / BYTERATE;
-    status = pclient->poctet->writeRaw(pclient->drvPvt, pau, pdata, len, &wrote);
+    status = pclient->poctet->write(pclient->drvPvt, pau, pdata, len, &wrote);
     if (status == asynSuccess) {
 	asynPrintIO(pau, ASYN_TRACEIO_DEVICE, pdata, len,
 		    "dnpSend: sent %u of %d bytes\n", wrote, len);
@@ -82,7 +82,7 @@ static int dnpGets(dnAsynClient *pclient, char *pdata, int len) {
     asynPrint(pau, ASYN_TRACE_FLOW,
 	      "dnpGets(%p, %p, %d)\n", pclient, pdata, len);
     
-    status = pclient->poctet->readRaw(pclient->drvPvt, pau, pdata, len, &got, &why);
+    status = pclient->poctet->read(pclient->drvPvt, pau, pdata, len, &got, &why);
     if (status == asynSuccess) {
 	int trace = ASYN_TRACEIO_DEVICE;
 	int retval = 0;

@@ -240,7 +240,7 @@ static void dniDump(struct plcInteract *pInt, const char *paddr,
     int i;
     
     if (paddr) {
-	if (isdigit(paddr[0])) {
+	if (isdigit((int)paddr[0])) {
 	    /* Assume it's a VMEM address */
 	    pio = plcIoData;
 	} else {
@@ -371,7 +371,7 @@ static void dniModify(struct plcInteract *pInt, const char *paddr, int protect) 
 	return;
     }
     
-    if (!isdigit(paddr[0])) {
+    if (!isdigit((int)paddr[0])) {
 	if (paddr[0] == 'V') {
 	    paddr++;
 	} else {
@@ -421,7 +421,7 @@ static void dniModify(struct plcInteract *pInt, const char *paddr, int protect) 
 	    if (dniSend(pInt)) return;
 	}
 	
-	while (isspace(*parse)) parse++;
+	while (isspace((int)*parse)) parse++;
 	
 	switch (*parse) {
 	case 0:

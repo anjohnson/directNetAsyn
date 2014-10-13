@@ -23,7 +23,6 @@ Version:
 #include <dbCommon.h>
 #include <devSup.h>
 #include <link.h>
-#include <epicsMutex.h>
 #include <shareLib.h>
 
 
@@ -83,12 +82,12 @@ typedef void (*dnPlcReportFn)(int detail, struct plcInfo *pPlc);
 
 /* Common routines in devDnAsyn.c */
 
-epicsShareFunc int epicsShareAPI createDnAsynPLC(
+epicsShareFunc int createDnAsynPLC(
     const char* pname, int slaveId, const char* port);
-epicsShareFunc struct plcInfo * epicsShareAPI dnAsynPlc(const char* pname);
-epicsShareFunc int epicsShareAPI dnAsynAddr(
+epicsShareFunc struct plcInfo * dnAsynPlc(const char* pname);
+epicsShareFunc int dnAsynAddr(
     struct dbCommon *prec, struct plcAddr *paddr, struct link *plink);
-epicsShareFunc void epicsShareAPI dnAsynReport(
+epicsShareFunc void dnAsynReport(
     int detail, dnPlcReportFn ioReport);
 
 #endif /* INC_devDnAsyn_H */

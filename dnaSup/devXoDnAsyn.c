@@ -16,26 +16,33 @@ Version:
 
 ******************************************************************************/
 
+/* OS */
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <recGbl.h>
-#include <recSup.h>
+/* libCom */
+#include <alarm.h>
+#include <errlog.h>
+
+/* IOC */
+#include <dbLock.h>
 #include <devSup.h>
 #include <drvSup.h>
-#include <dbLock.h>
-#include <errlog.h>
-#include <alarm.h>
-#include <epicsExport.h>
+#include <recGbl.h>
+#include <recSup.h>
 
+/* Records */
 #include <aoRecord.h>
 #include <boRecord.h>
 #include <mbboRecord.h>
 #include <mbboDirectRecord.h>
 
-#include "directNetClient.h"
-#include "directNetAsyn.h"
+#include <epicsExport.h>
+
+/* directNetAsyn */
 #include "devDnAsyn.h"
+#include "directNetAsyn.h"
+#include "directNetClient.h"
 
 
 struct wrCache {    /* wrCache is a simple array of all the writable memory */

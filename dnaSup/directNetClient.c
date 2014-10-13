@@ -16,17 +16,22 @@ Version:
 
 ******************************************************************************/
 
+/* OS */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
+/* libCom */
 #include <errlog.h>
+
+/* asyn */
 #include <asynDriver.h>
 #include <asynOctet.h>
 
-#include "directNetAsyn.h"
-
 #define epicsExportSharedSymbols
+
+/* directNetAsyn */
+#include "directNetAsyn.h"
 #include "directNetClient.h"
 
 
@@ -65,7 +70,8 @@ static int dnpSend(dnAsynClient *pclient, const char *pdata, int len) {
     status = pclient->poctet->write(pclient->drvPvt, pau, pdata, len, &wrote);
     if (status == asynSuccess) {
 	asynPrintIO(pau, ASYN_TRACEIO_DEVICE, pdata, len,
-		    "dnpSend: sent %u of %d bytes\n", wrote, len);
+		    "dnpSend: sent %lu of %d bytes\n",
+                    (unsigned long) wrote, len);
 	return DN_SUCCESS;
     } else {
 	asynPrint(pau, ASYN_TRACE_ERROR,
@@ -91,8 +97,8 @@ static int dnpGets(dnAsynClient *pclient, char *pdata, int len) {
 	    retval = -1;
 	}
 	asynPrintIO(pau, trace, pdata, got,
-		    "dnpGets: Got %u of %d bytes, reason 0x%x\n",
-		    got, len, why);
+		    "dnpGets: Got %lu of %d bytes, reason 0x%x\n",
+		    (unsigned long) got, len, why);
 	return retval;
     } else if (status == asynTimeout) {
 	struct plcMessage* pMsg = (struct plcMessage*) pau->userPvt;

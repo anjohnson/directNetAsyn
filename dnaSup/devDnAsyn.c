@@ -16,20 +16,29 @@ Version:
 
 ******************************************************************************/
 
+/* OS */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <recGbl.h>
+
+/* libCom */
+#include <alarm.h>
+#include <epicsMutex.h>
+#include <epicsString.h>
+#include <iocsh.h>
+
+/* IOC */
+#include <dbCommon.h>
+#include <dbScan.h>
 #include <devSup.h>
 #include <drvSup.h>
-#include <dbScan.h>
-#include <alarm.h>
-#include <iocsh.h>
+#include <link.h>
+#include <recGbl.h>
+
 #include <epicsExport.h>
 
+/* directNetAsyn */
 #include "directNetClient.h"
-
-#define epicsExportSharedSymbols
 #include "devDnAsyn.h"
 
 
@@ -183,8 +192,8 @@ int epicsShareAPI createDnAsynPLC(const char* pname, int slaveId, const char* po
 	return -1;
     }
 
-    pPlc->name	    = pname;
-    pPlc->port	    = port;
+    pPlc->name	    = epicsStrDup(pname);
+    pPlc->port	    = epicsStrDup(port);
     pPlc->slaveId   = slaveId;
 
     /* Add it to the list */
@@ -238,9 +247,9 @@ epicsExportAddress(drvet, drvDnAsyn);
  * 	createDnAsynPLC(const char* pname, int slaveId, const char* port)
  * 	dnAsynReport(int detail)
  */
-static const iocshArg cmd0Arg0 = { "PLC name",iocshArgPersistentString};
+static const iocshArg cmd0Arg0 = { "PLC name",iocshArgString};
 static const iocshArg cmd0Arg1 = { "directNet slave ID",iocshArgInt};
-static const iocshArg cmd0Arg2 = { "Asyn port name",iocshArgPersistentString};
+static const iocshArg cmd0Arg2 = { "Asyn port name",iocshArgString};
 static const iocshArg * const cmd0Args[] =
     {&cmd0Arg0,&cmd0Arg1,&cmd0Arg2};
 static const iocshFuncDef cmd0FuncDef =

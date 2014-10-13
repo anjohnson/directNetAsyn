@@ -16,30 +16,37 @@ Version:
 
 ******************************************************************************/
 
+/* OS */
 #include <stdio.h>
 #include <stdlib.h>
 
+/* libCom */
+#include <alarm.h>
+#include <epicsMath.h>
+#include <epicsMutex.h>
+#include <errlog.h>
+
+/* IOC */
+#include <dbLock.h>
+#include <dbScan.h>
+#include <devSup.h>
+#include <drvSup.h>
+#include <menuScan.h>
 #include <recGbl.h>
 #include <recSup.h>
-#include <devSup.h>
-#include <dbScan.h>
-#include <drvSup.h>
-#include <errlog.h>
-#include <dbLock.h>
-#include <alarm.h>
-#include <epicsMutex.h>
-#include <epicsExport.h>
-#include <epicsMath.h>
 
+/* Records */
 #include <aiRecord.h>
 #include <biRecord.h>
 #include <mbbiRecord.h>
 #include <mbbiDirectRecord.h>
-#include <menuScan.h>
 
-#include "directNetClient.h"
-#include "directNetAsyn.h"
+#include <epicsExport.h>
+
+/* directNetAsyn */
 #include "devDnAsyn.h"
+#include "directNetAsyn.h"
+#include "directNetClient.h"
 
 
 struct rdCache {

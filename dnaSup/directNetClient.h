@@ -42,8 +42,8 @@ struct plcMessage {
     void (*connstat)(struct plcMessage *pPvt, int connected);
 };
 
-epicsShareFunc int epicsShareAPI initDnAsynClient(struct plcMessage* pPlcMsg);
-epicsShareFunc int epicsShareAPI dnAsynClientSend(struct plcMessage *pPlcMsg);
+epicsShareFunc int initDnAsynClient(struct plcMessage* pPlcMsg);
+epicsShareFunc int dnAsynClientSend(struct plcMessage *pPlcMsg);
 
 #ifdef __cplusplus
 }

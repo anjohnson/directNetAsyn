@@ -16,20 +16,25 @@ Version:
 
 ******************************************************************************/
 
+/* OS */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
-#include <epicsStdio.h>
+/* libCom */
 #include <epicsEvent.h>
 #include <epicsExport.h>
 #include <epicsReadline.h>
+#include <epicsStdio.h>
 #include <iocsh.h>
 
-#include "directNetClient.h"
-#include "directNetAsyn.h"
+#define epicsExportSharedSymbols
+
+/* directNetAsyn */
 #include "devDnAsyn.h"
+#include "directNetAsyn.h"
+#include "directNetClient.h"
 
 
 /* Some local magic numbers */
@@ -148,7 +153,7 @@ static void dniConnect(struct plcInteract **ppInt, const char *pname) {
 
 static void dniHelp(const char *pcmd) {
     if (pcmd == NULL) pcmd = "";
-    switch (tolower(*pcmd)) {
+    switch (tolower((int) *pcmd)) {
     int i;
     case 0:
 	puts("    The DNI commands available are:\n"
@@ -306,42 +311,45 @@ static void dniDump(struct plcInteract *pInt, const char *paddr,
 		printf(addrFormat, addr);
 	    }
 	    switch (pio->wordLen) {
-	    unsigned int datum;
+	    union {
+                epicsUInt32 u32;
+                float f32;
+            } datum;
 	    case 4:
-		datum = ((0xff & pMsg->pdata[i*4+3]) << 24) +
-			((0xff & pMsg->pdata[i*4+2]) << 16) +
-			((0xff & pMsg->pdata[i*4+1]) << 8) +
-			 (0xff & pMsg->pdata[i*4  ]);
-		printf(" %8.8X=%-8.5g", datum, *(float *)(char *)&datum);
+		datum.u32 = ((0xff & pMsg->pdata[i*4+3]) << 24) +
+			    ((0xff & pMsg->pdata[i*4+2]) << 16) +
+			    ((0xff & pMsg->pdata[i*4+1]) << 8) +
+			     (0xff & pMsg->pdata[i*4  ]);
+		printf(" %8.8X=%-8.5g", datum.u32, datum.f32);
 		addr += 2;
 		break;
 		
 	    case 3:
-		datum = ((0xff & pMsg->pdata[i*3+2]) << 16) +
-			((0xff & pMsg->pdata[i*3+1]) << 8) +
-			 (0xff & pMsg->pdata[i*3  ]);
-		printf(" %6.6X", datum);
+		datum.u32 = ((0xff & pMsg->pdata[i*3+2]) << 16) +
+			    ((0xff & pMsg->pdata[i*3+1]) << 8) +
+			     (0xff & pMsg->pdata[i*3  ]);
+		printf(" %6.6X", datum.u32);
 		addr += 1;
 		break;
 		
 	    case 2:
-		datum = ((0xff & pMsg->pdata[i*2+1]) << 8) +
-			 (0xff & pMsg->pdata[i*2  ]);
-		printf(" %4.4X", datum);
+		datum.u32 = ((0xff & pMsg->pdata[i*2+1]) << 8) +
+			     (0xff & pMsg->pdata[i*2  ]);
+		printf(" %4.4X", datum.u32);
 		addr += 1;
 		break;
 		
 	    case 1:
-		datum = (0xff & pMsg->pdata[i]);
+		datum.u32 = (0xff & pMsg->pdata[i]);
 		if (pio->aType == BIT) {
 		    int j;
 		    for (j=0; j<8; j++) {
-			printf(" %c", (datum & 1) ? '1' : '0');
-			datum >>= 1;
+			printf(" %c", (datum.u32 & 1) ? '1' : '0');
+			datum.u32 >>= 1;
 		    }
 		    addr += 8;
 		} else {
-		    printf(" %2.2X", datum);
+		    printf(" %2.2X", datum.u32);
 		    addr += 1;
 		}
 		break;
@@ -540,7 +548,7 @@ int DNI(const char *pname) {
 	    argv[i] = NULL;
 	}
 	
-	cmd = tolower(*argv[0]);
+	cmd = tolower((int) *argv[0]);
 	switch (cmd) {
 	case '?':
 	    dniHelp(argv[1]);

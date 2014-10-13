@@ -1,4 +1,5 @@
 ## configure/RELEASE: Location of external products
 
-ASYN=/usr/local/iocapps/R3.14.7/modules/soft/asyn/4-2-1-asd1
-EPICS_BASE=/usr/local/iocapps/R3.14.7/base/3-14-7-asd2
+ASYN=/usr/local/iocapps/R3.14.12.3/modules/soft/asyn/4-21-asd2
+EPICS_BASE=/usr/local/iocapps/R3.14.12.3/base/3-14-12-3-asd1
+

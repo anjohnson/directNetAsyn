@@ -18,6 +18,9 @@ directNetAsyn_SRCS += devXoDnAsyn.c
 directNetAsyn_SRCS += devXiDnAsyn.c
 directNetAsyn_SRCS += directNetClient.c
 
+GIT_VER := $(shell git describe --always --tags --dirty)
+dnAsynInteract_CFLAGS = -DGIT_VER=$(GIT_VER)
+
 # Link with the asyn and base libraries
 directNetAsyn_LIBS += asyn
 directNetAsyn_LIBS += $(EPICS_BASE_IOC_LIBS)

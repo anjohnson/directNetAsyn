@@ -41,6 +41,9 @@ Version:
 
 #define DNI_MAXARGS	5
 
+#define STRINGIFY(x) #x
+#define VALUE(x) STRINGIFY(x)
+#define GIT_VERSION VALUE(GIT_VER)
 
 /* Declarations and definitions */
 
@@ -593,8 +596,8 @@ int DNI(const char *pname) {
 	    break;
 	    
 	case 'v':
-	    printf("directNetAsyn CVS Tag Name: %s\n",
-		   "$Name$");
+	    printf("directNetAsyn Git Version: %s\n",
+		   GIT_VERSION);
 	    break;
 	    
 	default:

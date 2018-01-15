@@ -1,5 +1,7 @@
 ## configure/RELEASE: Location of external products
 
-ASYN=/usr/local/iocapps/R3.14.12.3/modules/soft/asyn/4-21-asd2
-EPICS_BASE=/usr/local/iocapps/R3.14.12.3/base/3-14-12-3-asd1
+IOCAPPS = /net/shield/iocapps2/R3.15.5
 
+ASYN = $(IOCAPPS)/modules/soft/asyn/4-32-aes1
+
+EPICS_BASE = $(IOCAPPS)/base/3-15-5-aes1

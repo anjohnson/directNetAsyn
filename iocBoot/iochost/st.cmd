@@ -1,4 +1,4 @@
-#!../../bin/linux-x86/dnaTest
+#!../../bin/linux-x86_64/dnaTest
 < envPaths
 
 cd ${TOP}

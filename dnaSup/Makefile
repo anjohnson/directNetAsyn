@@ -27,3 +27,8 @@ directNetAsyn_LIBS += $(EPICS_BASE_IOC_LIBS)
 
 #=======================================
 include $(TOP)/configure/RULES
+
+# For manual use by ANJ only:
+simProtocol.html: simProtocol.md
+	@$(RM) $@
+	markdown2 -x fenced-code-blocks $< > $@

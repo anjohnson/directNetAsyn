@@ -5,3 +5,6 @@
 /html/
 /adl/
 O.*/
+/iocBoot/*/envPaths
+/iocBoot/*/cdCommands
+

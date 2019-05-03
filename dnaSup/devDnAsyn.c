@@ -54,7 +54,7 @@ static struct plcInfo *dnAsyn_plcs;
 
 /* Find a named PLC */
 
-struct plcInfo * epicsShareAPI dnAsynPlc(const char* pname) {
+struct plcInfo * dnAsynPlc(const char* pname) {
     struct plcInfo *pPlc = dnAsyn_plcs;
     
     while (pPlc) {
@@ -68,7 +68,7 @@ struct plcInfo * epicsShareAPI dnAsynPlc(const char* pname) {
 
 /* Parse an instio link field */
 
-int epicsShareAPI dnAsynAddr(struct dbCommon *prec, struct plcAddr *paddr, struct link *plink) {
+int dnAsynAddr(struct dbCommon *prec, struct plcAddr *paddr, struct link *plink) {
     struct instio *pinstio;
     struct plcInfo *pPlc;
     unsigned int addr;
@@ -161,7 +161,7 @@ int epicsShareAPI dnAsynAddr(struct dbCommon *prec, struct plcAddr *paddr, struc
 
 /* Create plc information entry */
 
-int epicsShareAPI createDnAsynPLC(const char* pname, int slaveId, const char* port) {
+int createDnAsynPLC(const char* pname, int slaveId, const char* port) {
     struct plcInfo *pPlc = dnAsyn_plcs;
     
     if ((slaveId <= 0) || (slaveId > MAXDNSLAVEID)) {
@@ -206,7 +206,7 @@ int epicsShareAPI createDnAsynPLC(const char* pname, int slaveId, const char* po
 
 /* Report functions */
 
-void epicsShareAPI dnAsynReport(int detail, dnPlcReportFn ioReport) {
+void dnAsynReport(int detail, dnPlcReportFn ioReport) {
     struct plcInfo *pPlc = dnAsyn_plcs;
     
     while (pPlc) {

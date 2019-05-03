@@ -347,7 +347,7 @@ static void dncException(asynUser *pau, asynException why) {
 
 /* Exported routines */
 
-int epicsShareAPI initDnAsynClient(struct plcMessage* pMsg) {
+int initDnAsynClient(struct plcMessage* pMsg) {
     dnAsynClient *pclient;
     asynUser *pau;
     asynStatus status;
@@ -400,7 +400,7 @@ err_return:
     return -1;
 }
 
-int epicsShareAPI dnAsynClientSend(struct plcMessage *pMsg) {
+int dnAsynClientSend(struct plcMessage *pMsg) {
     dnAsynClient *pclient = pMsg->pClient;
     asynUser *pau = pclient->pau;
     asynStatus status;

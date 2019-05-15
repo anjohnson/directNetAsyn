@@ -57,26 +57,24 @@ const char *dn_error_strings[] = {
 
 int dnAsynMaxRetries = MAX_RETRIES;
 
+
 /* asynOctet interface routines */
 
-static int dnpSend(dnAsynClient *pclient, const char *pdata, int len) {
+static void dnpSend(dnAsynClient *pclient, const char *pdata, int len) {
     asynUser *pau = pclient->pau;
     asynStatus status;
     size_t wrote;
     asynPrint(pau, ASYN_TRACE_FLOW,
 	      "dnpSend(%p, %p, %d)\n", pclient, pdata, len);
     
-    pau->timeout += len / BYTERATE;
     status = pclient->poctet->write(pclient->drvPvt, pau, pdata, len, &wrote);
     if (status == asynSuccess) {
 	asynPrintIO(pau, ASYN_TRACEIO_DEVICE, pdata, len,
 		    "dnpSend: sent %lu of %d bytes\n",
                     (unsigned long) wrote, len);
-	return DN_SUCCESS;
     } else {
 	asynPrint(pau, ASYN_TRACE_ERROR,
 		    "dnpSend: write failed: %s\n", pau->errorMessage);
-	return DN_SEND_FAIL;
     }
 }
 
@@ -159,7 +157,7 @@ static int dnpSelect(dnAsynClient *pclient, int target) {
     reselect[1] = SEQCHAR;
     reselect[2] = slaveId;
     reselect[3] = ENQCHAR;
-    pau->timeout = ENQACKDELAY;
+    pau->timeout = ENQACKDELAY + 4 / BYTERATE;
     do {
 	int reply = dnpSendGetc(pclient, select, sendlen);
 	while (reply > 0 && reply != SEQCHAR && reply != EOTCHAR) {
@@ -192,7 +190,8 @@ static int dnpHeader(dnAsynClient *pclient, int cmd, int addr, int len) {
     sprintf((char *) header, "%c%4.4X%4.4X%4.4X%2.2X%c", 
 	    SOHCHAR, cmd, addr, len, MASTERID, ETBCHAR);
     header[HEADER_LEN-1] = dnpLRC(pclient, &header[1], HEADER_LEN - 3);
-    pau->timeout = HDRACKDELAY;
+    pau->timeout = HDRACKDELAY + HEADER_LEN / BYTERATE;
+
     do {
 	reply = dnpSendGetc(pclient, header, HEADER_LEN);
 	if (reply == ACKCHAR) return DN_SUCCESS;
@@ -220,7 +219,7 @@ static int dnpWrBlk(dnAsynClient *pclient, const char *pdata, int len) {
     memcpy(&block[1], pdata, blen);
     block[blen+1] = len ? ETBCHAR : ETXCHAR;
     block[blen+2] = dnpLRC(pclient, &block[1], blen);
-    pau->timeout = DATACKDELAY;
+    pau->timeout = DATACKDELAY + (BLOCK_LEN + 3) / BYTERATE;
     do {
 	reply = dnpSendGetc(pclient, block, blen + 3);
 	if (reply == ACKCHAR) return DN_SUCCESS;
@@ -237,7 +236,7 @@ static int dnpRdBlk(dnAsynClient *pclient, char *pdata, int len) {
     
     if (blen > BLOCK_LEN) blen = BLOCK_LEN;
     len -= blen;
-    pau->timeout = DATACKDELAY;
+    pau->timeout = DATACKDELAY + BLOCK_LEN / BYTERATE;
     do {
 	static const char ack = ACKCHAR, nak = NAKCHAR;
 	reply = dnpGetc(pclient);
@@ -249,10 +248,11 @@ static int dnpRdBlk(dnAsynClient *pclient, char *pdata, int len) {
 	    (dnpGets(pclient, pdata, blen) == DN_SUCCESS) &&
 	    (dnpGetc(pclient) == (len ? ETBCHAR : ETXCHAR)) &&
 	    (dnpGetc(pclient) == dnpLRC(pclient, pdata, blen))) {
-	    return dnpSend(pclient, &ack, 1);
+	    dnpSend(pclient, &ack, 1);
+	    return DN_SUCCESS;
 	}
 	
-	reply = dnpSend(pclient, &nak, 1);
+	dnpSend(pclient, &nak, 1);
     } while (--retries > 0);
     return DN_RDBLK_FAIL;
 }

@@ -142,17 +142,20 @@ int dnAsynAddr(struct dbCommon *prec, struct plcAddr *paddr, struct link *plink)
 	return S_dev_badSignal;
     }
     
+    paddr->vAddr = aTypes[addrType].offset + DNREFOFFSET;
     if (aTypes[addrType].aType == BIT) {
-	paddr->vAddr = aTypes[addrType].offset + (addr / PLCWORDBITS) + DNREFOFFSET;
+	paddr->vAddr += (addr / PLCWORDBITS);
 	paddr->bitNum = addr % PLCWORDBITS;
 	/* This code is wrong if offset is not a multiple of 16 */
     } else {
-	paddr->vAddr = addr + aTypes[addrType].offset + DNREFOFFSET;
+	paddr->vAddr += addr;
 	
 	if (*parse == '.') {
 	    parse++;
 	    paddr->bitNum = strtoul(parse, &parse, 8);
-	} else paddr->bitNum = 0;
+	}
+	else
+	    paddr->bitNum = 0;
     }
     
     return 0;
@@ -161,7 +164,8 @@ int dnAsynAddr(struct dbCommon *prec, struct plcAddr *paddr, struct link *plink)
 
 /* Create plc information entry */
 
-int createDnAsynPLC(const char* pname, int slaveId, const char* port) {
+static int addPLC(const char* pname, int slaveId,
+    const char* port, const struct plcProto *proto) {
     struct plcInfo *pPlc = dnAsyn_plcs;
     
     if ((slaveId <= 0) || (slaveId > MAXDNSLAVEID)) {
@@ -192,16 +196,28 @@ int createDnAsynPLC(const char* pname, int slaveId, const char* port) {
 	return -1;
     }
 
-    pPlc->name	    = epicsStrDup(pname);
-    pPlc->port	    = epicsStrDup(port);
-    pPlc->slaveId   = slaveId;
+    pPlc->name    = epicsStrDup(pname);
+    pPlc->port    = epicsStrDup(port);
+    pPlc->proto   = proto;
+    pPlc->slaveId = slaveId;
 
     /* Add it to the list */
-    pPlc->pNext    = dnAsyn_plcs;
+    pPlc->pNext = dnAsyn_plcs;
     dnAsyn_plcs = pPlc;
     
     return 0;
 }
+
+int createDnAsynPLC(const char* pname, int slaveId,
+    const char* port) {
+    return addPLC(pname, slaveId, port, &dnpProto);
+}
+
+int createDnAsynSimulatedPLC(const char* pname, int slaveId,
+    const char* port) {
+    return addPLC(pname, slaveId, port, &simProto);
+}
+
 
 
 /* Report functions */
@@ -268,10 +284,18 @@ static void cmd1CallFunc(const iocshArgBuf *args)
     dnAsynReport(args[0].ival, NULL);
 }
 
+static const iocshFuncDef cmd2FuncDef =
+    {"createDnAsynSimulatedPLC", 3, cmd0Args};
+static void cmd2CallFunc(const iocshArgBuf *args)
+{
+    createDnAsynSimulatedPLC(args[0].sval, args[1].ival, args[2].sval);
+}
+
 
 /* Registrar routine */
 void devDnAsynRegistrar(void) {
     iocshRegister(&cmd0FuncDef, cmd0CallFunc);
     iocshRegister(&cmd1FuncDef, cmd1CallFunc);
+    iocshRegister(&cmd2FuncDef, cmd2CallFunc);
 }
 epicsExportRegistrar(devDnAsynRegistrar);

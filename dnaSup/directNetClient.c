@@ -7,12 +7,10 @@ File:
     directNetClient.c
 
 Description:
-    Client support routines for directNet over ASYN
+    Client support routines for directNet or simulator over ASYN
 
 Author:
     Andrew Johnson
-Version:
-    $Id$
 
 ******************************************************************************/
 
@@ -20,9 +18,11 @@ Version:
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 /* libCom */
 #include <errlog.h>
+#include <epicsTime.h>
 
 /* asyn */
 #include <asynDriver.h>
@@ -34,12 +34,24 @@ Version:
 #include "directNetAsyn.h"
 #include "directNetClient.h"
 
+/* Packet interface methods */
 
-typedef struct dnAsynClient {
+typedef struct dnAsynClient dnAsynClient;
+
+typedef struct plcProto {
+    int (*read)(dnAsynClient *pclient,
+        int cmd, int addr, char *pdata, int len);
+    int (*write)(dnAsynClient *pclient,
+        int cmd, int addr, const char *pdata, int len);
+} plcProto;
+
+/* Client data structure */
+
+struct dnAsynClient {
     asynUser *pau;
     asynOctet *poctet;
     void *drvPvt;
-} dnAsynClient;
+};
 
 
 const char *dn_error_strings[] = {
@@ -111,12 +123,12 @@ static int dnpGets(dnAsynClient *pclient, char *pdata, int len) {
 }
 
 static int dnpGetc(dnAsynClient *pclient) {
-    char reply[1];
+    unsigned char reply[1]; /* 0..255 */
     int result;
     asynPrint(pclient->pau, ASYN_TRACE_FLOW,
 	      "dnpGetc(%p)\n", pclient);
     
-    result = dnpGets(pclient, reply, 1);
+    result = dnpGets(pclient, (char *) reply, 1);
     return result ? result : reply[0];
 }
 
@@ -131,7 +143,7 @@ static int dnpSendGetc(dnAsynClient *pclient, char *pdata, int len) {
 }
 
 
-/* Protocol implementation */
+/* DirectNet protocol implementation */
 
 static char dnpLRC(dnAsynClient *pclient, const char *pdata, int len) {
     char lrc = 0;
@@ -266,7 +278,7 @@ static void dnpEOT(dnAsynClient *pclient) {
 }
 
 
-/* Protocol interface routines */
+/* Protocol interface routines for directNet */
 
 static int dnpWrite(dnAsynClient *pclient, int cmd, int addr, const char *pdata, int len) {
     int status, retries = dnAsynMaxRetries;
@@ -306,19 +318,355 @@ static int dnpRead(dnAsynClient *pclient, int cmd, int addr, char *pdata, int le
     return status;
 }
 
+const plcProto dnpProto = {
+    dnpRead, dnpWrite
+};
+
+
+/* Simulator protocol implementation */
+
+static void simCommand(dnAsynClient *pclient, int cmd, int addr, int len) {
+    asynUser *pau = pclient->pau;
+    int id = (cmd >> 8) & 0xff;
+    char msg = (cmd & WRITECMD) ? 'W' : 'R';
+    char command[2+3+3+5+5+1+1]; /* <m:1> <id:2> <cmd:2> <addr:4> <len:4> */
+
+    asynPrint(pau, ASYN_TRACE_FLOW,
+        "simCommand(%p, %d, %d, %d)\n", pclient, cmd, addr, len);
+
+    /* Encode the command as ASCII */
+    sprintf(command, "%c %2.2x %2.2x %4.4x %4.4x\n",
+        msg, id, cmd & 0xff, addr, len);
+    dnpSend(pclient, command, strlen(command));
+}
+
+static void simWriteMsg(dnAsynClient *pclient, const char *pdata, int len) {
+    asynUser *pau = pclient->pau;
+    char *next;
+    char block[2+3+32*2+1+1]; /* D <len:2> <d00:2><d01:2>...<d1f:2> */
+
+    asynPrint(pau, ASYN_TRACE_FLOW,
+        "simWriteMsg(%p, %p, %d)\n", pclient, pdata, len);
+
+    if (len > 32)
+        len = 32;
+
+    next = block + sprintf(block, "D %2.2x ", len);
+    while (len-- > 0) {
+        next += sprintf(next, "%2.2x", (unsigned) *pdata++);
+    }
+    *next++ = '\n';
+
+    dnpSend(pclient, block, next - block);
+}
+
+static int simResponse(dnAsynClient *pclient) {
+    asynUser *pau = pclient->pau;
+    epicsTimeStamp T_end;
+    char buffer[80];
+    size_t len;
+    int reply, ch;
+
+    asynPrint(pau, ASYN_TRACE_FLOW,
+        "simResponse(%p)\n", pclient);
+
+    epicsTimeGetCurrent(&T_end);
+    epicsTimeAddSeconds(&T_end, pau->timeout);
+
+    do {
+        epicsTimeStamp T_now;
+
+        reply = dnpGetc(pclient);
+        epicsTimeGetCurrent(&T_now);
+        pau->timeout = epicsTimeDiffInSeconds(&T_end, &T_now);
+
+        if (reply < 0)
+            return reply;
+    } while (reply == '\n' || reply == '\r');
+
+    switch (reply) {
+    case 'N':
+        len = 0;
+        do {
+            epicsTimeStamp T_now;
+
+            ch = dnpGetc(pclient);
+            epicsTimeGetCurrent(&T_now);
+            pau->timeout = epicsTimeDiffInSeconds(&T_end, &T_now);
+
+            if (ch < 0)
+                break;
+                /* A timeout here terminates the NAK message
+                 * but is otherwise ignored.
+                 */
+
+            if (isprint(ch)) {
+                buffer[len] = ch;
+                if (len+1 < sizeof(buffer))
+                    len++;
+            }
+        } while (ch != '\n' && ch != '\r');
+        buffer[len] = 0;
+
+        asynPrint(pau, ASYN_TRACE_ERROR,
+            "simResponse: Recived NAK '%s'\n", buffer);
+
+        /* Fall through... */
+    case 'A':
+    case 'X':
+    case 'D':
+        return reply;
+
+    default:
+        asynPrint(pau, ASYN_TRACE_ERROR,
+            "simResponse: Unknown response %d ('%c')\n",
+            reply, isprint(reply) ? reply : ' ');
+        return -1;
+    }
+}
+
+static int simWriteData(dnAsynClient *pclient, const char *pdata, int len) {
+    asynUser *pau = pclient->pau;
+    int status;
+
+    asynPrint(pau, ASYN_TRACE_FLOW,
+              "simWriteData(%p, %p, %d)\n", pclient, pdata, len);
+
+    do {
+        simWriteMsg(pclient, pdata, len);
+        len -= 32;
+        pdata += 32;
+    } while (len > 0);
+
+    status = simResponse(pclient);
+    if (status == 'A')
+        return DN_SUCCESS;
+
+    return DN_WRBLK_FAIL;
+}
+
+static int simReadByte(dnAsynClient *pclient) {
+    asynUser *pau = pclient->pau;
+    int ch, val;
+
+    do {
+        ch = dnpGetc(pclient);
+    } while (isspace(ch));
+
+    if (isxdigit(ch)) {
+        if (ch >= 'a')
+            val = ch + 10 - 'a' ;
+        else if (ch >= 'A')
+            val = ch + 10 - 'A' ;
+        else
+            val = ch - '0';
+        ch = dnpGetc(pclient);
+        if (isxdigit(ch)) {
+            val <<= 4;
+            if (ch >= 'a')
+                val += ch + 10 - 'a' ;
+            else if (ch >= 'A')
+                val += ch + 10 - 'A' ;
+            else
+                val += ch - '0';
+        }
+        else
+            val = -1;
+    }
+    else
+        val = -1;
+
+    if (val < 0)
+        asynPrint(pau, ASYN_TRACE_ERROR,
+            "simReadByte: Expected hex character: '%c'\n", ch);
+
+    return val;
+}
+
+static int simReadMsg(dnAsynClient *pclient, char *pdata, int len, int *got) {
+    asynUser *pau = pclient->pau;
+    epicsTimeStamp T_end;
+    int reply, blen, rlen, i;
+
+    asynPrint(pau, ASYN_TRACE_FLOW,
+        "simReadMsg(%p, %p, %d)\n", pclient, pdata, len);
+
+    epicsTimeGetCurrent(&T_end);
+    epicsTimeAddSeconds(&T_end, pau->timeout);
+
+    reply = simResponse(pclient);
+    if (reply != 'D')
+        return reply;
+
+    blen = simReadByte(pclient);
+    if (blen < 0)
+        return blen;
+    if (blen > len) {
+        rlen = len;
+        asynPrint(pau, ASYN_TRACE_ERROR,
+            "simReadMsg: Requested %d bytes but reply is %d bytes!\n",
+            len, blen);
+    }
+    else
+        rlen = blen;
+
+    for (i = 0; i < rlen; i++) {
+        int val;
+        epicsTimeStamp T_now;
+
+        val = simReadByte(pclient);
+        epicsTimeGetCurrent(&T_now);
+        pau->timeout = epicsTimeDiffInSeconds(&T_end, &T_now);
+
+        if (val < 0)
+            return val;
+
+        *pdata++ = val;
+        *got += 1;
+    }
+
+    /* Discard any extra data */
+    for (; i < blen; i++) {
+        int val;
+        epicsTimeStamp T_now;
+
+        val = simReadByte(pclient);
+        epicsTimeGetCurrent(&T_now);
+        pau->timeout = epicsTimeDiffInSeconds(&T_end, &T_now);
+
+        if (val < 0)
+            return val;
+    }
+
+    return reply;
+}
+
+static int simCancelRead(dnAsynClient *pclient) {
+    asynUser *pau = pclient->pau;
+    epicsTimeStamp T_end;
+    int reply;
+
+    asynPrint(pau, ASYN_TRACE_FLOW,
+        "simCancelRead(%p)\n", pclient);
+
+    epicsTimeGetCurrent(&T_end);
+    epicsTimeAddSeconds(&T_end, pau->timeout);
+
+    dnpSend(pclient, "X\n", 2);
+    do {
+        epicsTimeStamp T_now;
+
+        epicsTimeGetCurrent(&T_now);
+        pau->timeout = epicsTimeDiffInSeconds(&T_end, &T_now);
+        if (pau->timeout <= 0)
+            return DN_TIMEOUT;
+
+        reply = dnpGetc(pclient);
+        if (reply < 0)
+            return reply;
+    } while (reply != 'A');
+    return DN_SUCCESS;
+}
+
+static int simReadData(dnAsynClient *pclient, char *pdata, int len) {
+    asynUser *pau = pclient->pau;
+    epicsTimeStamp T_end;
+    int expected = len;
+
+    asynPrint(pau, ASYN_TRACE_FLOW,
+        "simReadData(%p, %p, %d)\n", pclient, pdata, len);
+
+    epicsTimeGetCurrent(&T_end);
+    epicsTimeAddSeconds(&T_end, pau->timeout);
+
+    do {
+        epicsTimeStamp T_now;
+        int got = 0;
+        int status = simReadMsg(pclient, pdata, expected, &got);
+
+        expected -= got;
+        epicsTimeGetCurrent(&T_now);
+        pau->timeout = epicsTimeDiffInSeconds(&T_end, &T_now);
+
+        if (status != 'D') {
+            if (status == 'N') {
+                if (expected == len)
+                    asynPrint(pau, ASYN_TRACE_ERROR,
+                              "Read request rejected, no data received\n");
+                else if (expected > 0)
+                    asynPrint(pau, ASYN_TRACE_ERROR,
+                              "Partial read, %d bytes missing\n", expected);
+            }
+            else {
+                asynPrint(pau, ASYN_TRACE_ERROR,
+                    "simReadData: Unexpected response %d ('%c'), cancelling\n",
+                    status, isprint(status) ? status : ' ');
+                simCancelRead(pclient);
+            }
+            return DN_RDBLK_FAIL;
+        }
+        pdata += got;
+
+        if (pau->timeout <= 0) {
+            asynPrint(pau, ASYN_TRACE_ERROR,
+                "simReadData: Timeout, cancelling\n");
+            simCancelRead(pclient);
+            return DN_RDBLK_FAIL;
+        }
+    } while (expected > 0);
+
+    return DN_SUCCESS;
+}
+
+
+/* Protocol interface routines for simulator */
+
+static int simWrite(dnAsynClient *pclient, int cmd, int addr,
+    const char *pdata, int len)
+{
+    asynPrint(pclient->pau, ASYN_TRACE_FLOW,
+        "simWrite(%p, %d, %d, %p, %d)\n", pclient, cmd, addr, pdata, len);
+
+    pclient->pau->timeout = 20.0;
+
+    simCommand(pclient, cmd, addr, len);
+
+    return simWriteData(pclient, pdata, len);
+}
+
+static int simRead(dnAsynClient *pclient, int cmd, int addr,
+    char *pdata, int len)
+{
+    asynPrint(pclient->pau, ASYN_TRACE_FLOW,
+        "simRead(%p, %d, %d, %p, %d)\n", pclient, cmd, addr, pdata, len);
+
+    pclient->pau->timeout = 20.0;
+
+    simCommand(pclient, cmd, addr, len);
+
+    return simReadData(pclient, pdata, len);
+}
+
+const plcProto simProto = {
+    simRead, simWrite
+};
+
 
 /* Asyn callback routines */
 
 static void dncQueueCallback(asynUser *pau) {
     struct plcMessage* pMsg = (struct plcMessage*) pau->userPvt;
     dnAsynClient *pclient = pMsg->pClient;
+    const plcProto *proto = pMsg->proto;
     asynPrint(pau, ASYN_TRACE_FLOW,
 	      "dncQueueCallback(%p)\n", pau);
     
     if (pMsg->cmd & WRITECMD) {
-	pMsg->status = dnpWrite(pclient, pMsg->cmd, pMsg->addr, pMsg->pdata, pMsg->len);
+	pMsg->status = proto->write(pclient,
+	    pMsg->cmd, pMsg->addr, pMsg->pdata, pMsg->len);
     } else {
-	pMsg->status = dnpRead(pclient, pMsg->cmd, pMsg->addr, pMsg->pdata, pMsg->len);
+	pMsg->status = proto->read(pclient,
+	    pMsg->cmd, pMsg->addr, pMsg->pdata, pMsg->len);
     }
     pMsg->callback(pMsg);
 }
@@ -352,7 +700,12 @@ int initDnAsynClient(struct plcMessage* pMsg) {
     asynUser *pau;
     asynStatus status;
     asynInterface *pif;
-    
+
+    if (!pMsg->proto) {
+        errlogPrintf("initDnAsynClient: Protocol pointer not set\n");
+        goto err_return;
+    }
+
     pclient = (dnAsynClient *) calloc(1, sizeof(dnAsynClient));
     if (pclient == NULL) {
 	errlogPrintf("initDnAsynClient: calloc failed\n");

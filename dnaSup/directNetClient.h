@@ -27,12 +27,14 @@ extern "C" {
 
 extern const char *dn_error_strings[];
 
-/* This structure hides the ASYN internals from the higher level code */
+/* These structures hide the ASYN internals from the higher level code */
 struct dnAsynClient;
+struct plcProto;
 
 struct plcMessage {
     const char *port;
     struct dnAsynClient *pClient;
+    const struct plcProto *proto;
     int cmd;
     int addr;
     int len; /* in bytes */
@@ -44,6 +46,8 @@ struct plcMessage {
 
 epicsShareFunc int initDnAsynClient(struct plcMessage* pPlcMsg);
 epicsShareFunc int dnAsynClientSend(struct plcMessage *pPlcMsg);
+
+epicsShareExtern const struct plcProto dnpProto, simProto;
 
 #ifdef __cplusplus
 }

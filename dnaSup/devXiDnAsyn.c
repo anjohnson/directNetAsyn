@@ -315,6 +315,7 @@ static long init_input(struct dbCommon *prec, enum recType type, struct link *pl
 	/* plcMessage entry */
 	pMsg = &pcache->item.msg;
 	pMsg->port     = pPlc->port;
+	pMsg->proto    = pPlc->proto;
 	pMsg->cmd      = (pPlc->slaveId << 8) | READVMEM;
 	pMsg->len      = PLCWORDBYTES * numWords;
 	pMsg->addr     = addr;

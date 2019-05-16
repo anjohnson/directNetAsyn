@@ -128,6 +128,7 @@ static void dniConnect(struct plcInteract **ppInt, const char *pname) {
 	}
 	
 	pInt->msg.port     = pPlc->port;
+	pInt->msg.proto    = pPlc->proto;
 	pInt->msg.pdata    = pInt->rdData;
 	pInt->msg.callback = dniCallback;
 	

@@ -55,12 +55,15 @@ extern int devDnAsynDebug;
 
 /* Device information structures */
 
+struct plcProto;
+
 struct plcInfo {
     struct plcInfo *pNext;
     const char* name;
     const char* port;
     unsigned short slaveId;
     unsigned short alarm;
+    const struct plcProto *proto;
     struct rdCache *rdCache;
     struct wrCache *wrCache;
     unsigned long nRdReqs;
@@ -84,6 +87,9 @@ typedef void (*dnPlcReportFn)(int detail, struct plcInfo *pPlc);
 
 epicsShareFunc int createDnAsynPLC(
     const char* pname, int slaveId, const char* port);
+epicsShareFunc int createDnAsynSimulatedPLC(
+    const char* pname, int slaveId, const char* port);
+
 epicsShareFunc struct plcInfo * dnAsynPlc(const char* pname);
 epicsShareFunc int dnAsynAddr(
     struct dbCommon *prec, struct plcAddr *paddr, struct link *plink);

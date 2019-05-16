@@ -124,6 +124,7 @@ static long init_output(struct dbCommon *prec, enum recType type, struct link *p
     dpvt->type    = type;
     
     pMsg->port     = pPlc->port;
+    pMsg->proto    = pPlc->proto;
     pMsg->callback = devXoDnCallback;
     
     status = initDnAsynClient(pMsg);

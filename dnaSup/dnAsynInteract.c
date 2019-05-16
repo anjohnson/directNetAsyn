@@ -489,14 +489,15 @@ static void dniStatus(struct plcInteract *pInt) {
     
     printf(" Last error code:  0x%2.2X\n", 0xff & pMsg->pdata[0]);
     printf(" Prev error code:  0x%2.2X\n", 0xff & pMsg->pdata[1]);
+
     printf("Successful comms: %5d\n",
-	   ((0xff & pMsg->pdata[2]) << 8) | (0xff & pMsg->pdata[3]));
+	   ((0xff & pMsg->pdata[3]) << 8) | (0xff & pMsg->pdata[2]));
     printf(" Erroneous comms: %5d\n",
-	   ((0xff & pMsg->pdata[4]) << 8) | (0xff & pMsg->pdata[5]));
+	   ((0xff & pMsg->pdata[5]) << 8) | (0xff & pMsg->pdata[4]));
     printf("  Header retries: %5d\n",
-	   ((0xff & pMsg->pdata[6]) << 8) | (0xff & pMsg->pdata[7]));
+	   ((0xff & pMsg->pdata[7]) << 8) | (0xff & pMsg->pdata[6]));
     printf("    Data retries: %5d\n",
-	   ((0xff & pMsg->pdata[8]) << 8) | (0xff & pMsg->pdata[9]));
+	   ((0xff & pMsg->pdata[9]) << 8) | (0xff & pMsg->pdata[8]));
 }
 
 

@@ -255,7 +255,7 @@ static long report(int detail) {
 }
 
 /* Create a drvet for the report function */
-struct drvet drvDnAsyn = {2, report, NULL};
+drvet drvDnAsyn = {2, report, NULL};
 epicsExportAddress(drvet, drvDnAsyn);
 
 

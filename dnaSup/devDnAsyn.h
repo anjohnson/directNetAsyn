@@ -40,13 +40,9 @@ Version:
 
 
 typedef struct {
-    long	number;
-    DEVSUPFUN	report;
-    DEVSUPFUN	init;
-    DEVSUPFUN	init_record;
-    DEVSUPFUN	get_ioint_info;
-    DEVSUPFUN	read_write;
-    DEVSUPFUN	special_linconv;
+    dset common;
+    long (*read_write)(struct dbCommon *prec);
+    long (*special_linconv)(struct dbCommon *prec, int after);
 } XXDSET;
 
 

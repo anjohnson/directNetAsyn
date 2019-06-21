@@ -84,7 +84,7 @@ static long report(int detail) {
 static void devXoDnCallback(struct plcMessage *pMsg) {
     struct dpvtOut  *dpvt = (struct dpvtOut *) pMsg;
     struct dbCommon *precord=dpvt->precord;
-    struct rset     *prset=precord->rset;
+    rset *prset=precord->rset;
 
     dbScanLock(precord);
     (*prset->process)(precord);
@@ -165,20 +165,22 @@ static long init_output(struct dbCommon *prec, enum recType type, struct link *p
     return 0;
 }
 
-static long init_ao(struct aoRecord *prec) {
+static long init_ao(struct dbCommon *precord) {
+    struct aoRecord *prec = (struct aoRecord *) precord;
     long status;
     
     if (devDnAsynDebug > 0)
 	printf ("devXoDnAsyn: Init ao invoked\n");
     
-    status = init_output((struct dbCommon *) prec, AO, &prec->out);
+    status = init_output(precord, AO, &prec->out);
     if (status)
 	prec->pact = TRUE;	/* Error, prevent processing */
     
     return status;
 }
 
-static long init_aoflt(struct aoRecord *prec) {
+static long init_aoflt(struct dbCommon *precord) {
+    struct aoRecord *prec = (struct aoRecord *) precord;
     long status;
     
     if (devDnAsynDebug > 0)
@@ -192,13 +194,14 @@ static long init_aoflt(struct aoRecord *prec) {
 }
 
 
-static long init_bo(struct boRecord *prec) {
+static long init_bo(struct dbCommon *precord) {
+    struct boRecord *prec = (struct boRecord *) precord;
     long status;
 
     if (devDnAsynDebug > 0)
 	printf ("devXoDnAsyn: Init bo invoked\n");
  
-    status = init_output((struct dbCommon *) prec, BO, &prec->out);
+    status = init_output(precord, BO, &prec->out);
     if (status) {
 	prec->pact = TRUE;	/* Error, prevent processing */
 	return status;
@@ -209,13 +212,14 @@ static long init_bo(struct boRecord *prec) {
 }
 
 
-static long init_mbbo(struct mbboRecord *prec) {
+static long init_mbbo(struct dbCommon *precord) {
+    struct mbboRecord *prec = (struct mbboRecord *) precord;
     long status;
     
     if (devDnAsynDebug > 0)
        printf ("devXoDnAsyn: Init mbbo invoked\n");
  
-    status = init_output((struct dbCommon *) prec, MBBO, &prec->out);
+    status = init_output(precord, MBBO, &prec->out);
     if (status) {
 	prec->pact = TRUE;	/* Error, prevent processing */
 	return status;
@@ -227,13 +231,14 @@ static long init_mbbo(struct mbboRecord *prec) {
 }
 
 
-static long init_mbbod(struct mbboDirectRecord *prec) {
+static long init_mbbod(struct dbCommon *precord) {
+    struct mbboDirectRecord *prec = (struct mbboDirectRecord *) precord;
     long status;
     
     if (devDnAsynDebug > 0)
        printf ("devXoDnAsyn: Init mbbo invoked\n");
  
-    status = init_output((struct dbCommon *) prec, MBBOD, &prec->out);
+    status = init_output(precord, MBBOD, &prec->out);
     if (status) {
 	prec->pact = TRUE;	/* Error, prevent processing */
 	return status;
@@ -390,11 +395,26 @@ static long write_data(struct dbCommon *prec) {
 
 /* Device Support Entry Tables */
 
-XXDSET devAoDnAsyn    = { 6,NULL,  NULL,init_ao,    NULL, write_data, NULL };
-XXDSET devAoFDnAsyn   = { 6,NULL,  NULL,init_aoflt, NULL, write_data, NULL };
-XXDSET devBoDnAsyn    = { 5,report,NULL,init_bo,    NULL, write_data };
-XXDSET devMbboDnAsyn  = { 5,NULL,  NULL,init_mbbo,  NULL, write_data };
-XXDSET devMbbodDnAsyn = { 5,NULL,  NULL,init_mbbod, NULL, write_data };
+XXDSET devAoDnAsyn = {
+    { 6, NULL, NULL, init_ao, NULL },
+    write_data, NULL
+};
+XXDSET devAoFDnAsyn = {
+    { 6, NULL, NULL, init_aoflt, NULL },
+    write_data, NULL
+};
+XXDSET devBoDnAsyn = {
+    { 5, report, NULL, init_bo, NULL },
+    write_data
+};
+XXDSET devMbboDnAsyn = {
+    { 5, NULL, NULL, init_mbbo, NULL },
+    write_data
+};
+XXDSET devMbbodDnAsyn = {
+    { 5, NULL, NULL, init_mbbod, NULL },
+    write_data
+};
 
 epicsExportAddress(dset, devAoDnAsyn);
 epicsExportAddress(dset, devAoFDnAsyn);

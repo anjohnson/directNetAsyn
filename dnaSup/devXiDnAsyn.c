@@ -219,7 +219,7 @@ static void devXiDnCallback(struct plcMessage *pMsg) {
     /* Now process all the waiting records */
     while (dpvt != NULL) {
 	struct dbCommon *prec = dpvt->precord;
-	struct rset *prset = prec->rset;
+	rset *prset = prec->rset;
 	if (devDnAsynDebug >= 15) {
 	    printf("Examining \"%s\", waiting = %d\n", prec->name, dpvt->waiting);
 	}
@@ -387,13 +387,14 @@ static long init_input(struct dbCommon *prec, enum recType type, struct link *pl
 }
 
 
-static long init_ai(struct aiRecord *prec) {
+static long init_ai(struct dbCommon *precord) {
+    struct aiRecord *prec = (struct aiRecord *) precord;
     long status;
 
     if (devDnAsynDebug > 0)
 	printf ("devXiDnAsyn: Init ai called for \"%s\"\n", prec->name);
 
-    status = init_input((struct dbCommon *) prec, AI, &prec->inp);
+    status = init_input(precord, AI, &prec->inp);
     if (status)
 	return status;
     
@@ -403,13 +404,14 @@ static long init_ai(struct aiRecord *prec) {
     return 0;
 }
 
-static long init_aif(struct aiRecord *prec) {
+static long init_aif(struct dbCommon *precord) {
+    struct aiRecord *prec = (struct aiRecord *) precord;
     long status;
 
     if (devDnAsynDebug > 0)
 	printf ("devXiDnAsyn: Init aif called for \"%s\"\n", prec->name);
 
-    status = init_input((struct dbCommon *) prec, AIF, &prec->inp);
+    status = init_input(precord, AIF, &prec->inp);
     if (status)
 	return status;
     
@@ -417,13 +419,14 @@ static long init_aif(struct aiRecord *prec) {
 }
 
 
-static long init_bi(struct biRecord *prec) {
+static long init_bi(struct dbCommon *precord) {
+    struct biRecord *prec = (struct biRecord *) precord;
     long status;
     
     if (devDnAsynDebug > 0)
        printf ("devXiDnAsyn: Init bi called for \"%s\"\n", prec->name);
  
-    status = init_input((struct dbCommon *) prec, BI, &prec->inp);
+    status = init_input(precord, BI, &prec->inp);
     if (status)
 	return status;
     
@@ -432,13 +435,14 @@ static long init_bi(struct biRecord *prec) {
 }
 
 
-static long init_mbbi(struct mbbiRecord *prec) {
+static long init_mbbi(struct dbCommon *precord) {
+    struct mbbiRecord *prec = (struct mbbiRecord *) precord;
     long status;
 
     if (devDnAsynDebug > 0)
 	printf ("devXiDnAsyn: Init mbbi called for \"%s\"\n", prec->name);
     
-    status = init_input((struct dbCommon *) prec, MBBI, &prec->inp);
+    status = init_input(precord, MBBI, &prec->inp);
     if (status)
 	return status;
     
@@ -448,13 +452,14 @@ static long init_mbbi(struct mbbiRecord *prec) {
 }
 
 
-static long init_mbbid(struct mbbiDirectRecord *prec) {
+static long init_mbbid(struct dbCommon *precord) {
+    struct mbbiDirectRecord *prec = (struct mbbiDirectRecord *) precord;
     long status;
 
     if (devDnAsynDebug > 0)
 	printf ("devXiDnAsyn: Init mbbiDirect called for \"%s\"\n", prec->name);
     
-    status = init_input((struct dbCommon *) prec, MBBID, &prec->inp);
+    status = init_input(precord, MBBID, &prec->inp);
     if (status)
 	return status;
     
@@ -640,11 +645,26 @@ static long read_data(struct dbCommon *prec) {
 
 /* Device Support Entry Tables */
 
-XXDSET devAiDnAsyn    = { 6,NULL,  NULL,init_ai,   get_ioint,read_data, NULL };
-XXDSET devAiFDnAsyn   = { 6,NULL,  NULL,init_aif,  get_ioint,read_data, NULL };
-XXDSET devBiDnAsyn    = { 5,report,NULL,init_bi,   get_ioint,read_data };
-XXDSET devMbbiDnAsyn  = { 5,NULL,  NULL,init_mbbi, get_ioint,read_data };
-XXDSET devMbbidDnAsyn = { 5,NULL,  NULL,init_mbbid,get_ioint,read_data };
+XXDSET devAiDnAsyn = {
+    { 6, NULL, NULL, init_ai, get_ioint},
+    read_data, NULL
+};
+XXDSET devAiFDnAsyn = {
+    { 6, NULL, NULL, init_aif, get_ioint},
+    read_data, NULL
+};
+XXDSET devBiDnAsyn = {
+    { 5, report, NULL, init_bi, get_ioint},
+    read_data
+};
+XXDSET devMbbiDnAsyn = {
+    { 5, NULL, NULL, init_mbbi, get_ioint},
+    read_data
+};
+XXDSET devMbbidDnAsyn = {
+    { 5, NULL, NULL, init_mbbid, get_ioint},
+    read_data
+};
 
 epicsExportAddress(dset, devAiDnAsyn);
 epicsExportAddress(dset, devAiFDnAsyn);

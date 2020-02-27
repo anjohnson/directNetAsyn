@@ -17,7 +17,7 @@ directNetAsyn</h1>
   <a href="mailto:anj@aps.anl.gov">Andrew Johnson</a>
 </address>
 <br>
-Release 1-4, October 2014</center>
+Release 1-6, February 2020</center>
 
 <h2>Contents</h2>
 <a href="#Introduction">1. Introduction</a> <br>
@@ -49,17 +49,18 @@ Release 1-4, October 2014</center>
 <h2><a name="Introduction"></a>1. Introduction</h2>
 
 <p>This document describes the EPICS device support for Automation Direct
-PLCs connected through a serial port using
+(Koyo) PLCs connected through a serial port using
 <a href="http://www.aps.anl.gov/epics/modules/soft/asyn/">asynDriver</a>.</p>
 
 <ul>
-  <li>A DL250 CPU is supported via either of its two serial ports.</li>
+  <li>DL250, D2-250-1, D2-260 and D2-262 CPUs are supported via either of
+    their two serial ports.</li>
   <li>A DL240 CPU may be controlled via Port 2</li>
   <li>A D2-DCM serial port can also be used with either the DL250 or DL240
-  CPU</li>
+    CPU</li>
   <li>Only DL250 CPU serial connections have been tested.</li>
   <li>The DL230 CPU does not support the DirectNet protocol so cannot be used
-    at all.</li>
+    with this software.</li>
 </ul>
 
 <p>Other Automation Direct PLCs which provide a DirectNet slave port might also
@@ -82,32 +83,22 @@ work, but these have not been explored.</p>
     <dd>Added parallel make directory dependencies</dd>
   <dt>Release 1-4</dt>
     <dd>Fixes for VxWorks 6.x shell, DLL symbols, build warnings</dd>
+  <dt>Release 1-5</dt>
+    <dd>IOC support for a text-based PLC-simulation protocol</dd>
+  <dt>Release 1-6</dt>
+    <dd>Support for D2-260 and D2-262 PLC CPUs; use typed rset, dset and drvet
+      structures when building against EPICS 7</dd>
 </dl>
 
-<h3><a name="Differences to directNetMpf"></a>1.2 Differences to
-directNetMpf</h3>
-
-<p>If you are already familiar with the directNetMpf or directNetBug support
-applications, the main differences you should be aware of are documented in
-these sections:</p>
-
-<ul>
-  <li><a href="#Requirements">2. Requirements</a></li>
-  <li><a href="#Application Installation">3.2 IOC Application
-  Installation</a></li>
-  <li><a href="#Hardware Address Formats">4. Hardware Address Formats</a></li>
-  <li><a href="#DirectNet Interact">6.2 DirectNet Interact</a></li>
-</ul>
 <hr>
 
 <h2><a name="Requirements"></a>2. Requirements</h2>
 
 <h3><a name="Software"></a>2.1 Software</h3>
 
-<p>Release 1-1 of the software has been built with EPICS base R3.14.7,
-although it should build with R3.14.6 and possibly against earlier versions
-too.  It was designed and tested against asynDriver R4-0, and should work with
-all newer R4 versions as well.</p>
+<p>Release 1-6 of this software has been built with EPICS 7.0.3.1, but it should
+build with Base versions back to R3.14.6 and earlier. It should work with any
+Asyn version from R4-0 through R4-34 and beyond.</p>
 
 <h3><a name="Hardware"></a>2.2 Hardware</h3>
 
@@ -119,11 +110,16 @@ throughput between the IOC and more than one PLC it is recommended that a
 separate serial line be used for each PLC, rather than connecting multiple PLCs
 through the same line.</p>
 
+<p>Release 1-6 added the ability to communicate with a PLC simulator over a
+TCP/IP socket, using a simpler wire protocol since the TCP transport provides
+a reliable stream delivery service. This feature has not been significantly
+exercised or tested yet.</p>
+
 <h3><a name="PLC Setup"></a>2.3 PLC Setup</h3>
 
 <p>The PLC must be configured to use the DirectNet protocol on the port to which
 ASYN is to be connected; communication will not be established otherwise. The
-serial format for Port 1 of the DL250 CPU is fixed (by the PLC) to be 9600 baud,
+serial format for Port 1 of a DL250 CPU is fixed (by the PLC) to be 9600 baud,
 8 bits, odd parity, although the format of the second serial port can be
 modified as required.  The serial format used by a local ASYN port is defined in
 the IOC's startup file <tt>st.cmd</tt>, whereas that of a remote port through a
@@ -140,8 +136,8 @@ input records and so on.</p>
 
 <p>The PLC program must communicate with the IOC in binary, which may require
 additional programming steps as the PLC arithmetic is often performed with BCD
-numbers. This software does not support conversions to or from BCD, nor can it
-yet understand data in the PLC's Double word format.</p>
+numbers. This software does not support conversions to or from BCD, but it can
+now read and write date in the PLC's floating-point format.</p>
 
 <p>Some ladder logic code is required to support the reading of ADC inputs by
 the IOC - see the DL205 Analog I/O Modules manual for details. If the ADC
@@ -153,9 +149,9 @@ convert the readings back to binary for use by the IOC.</p>
 
 <h2><a name="Installation"></a>3. Installation</h2>
 
-<p>This software is a support application maintained in the EPICS CVS
-respository at <tt>epics/modules/plc/directNetAsyn</tt>, and is published as a
-tar file on the EPICS Modules Download page. Installation is in two parts:</p>
+<p>This software is a standard EPICS support application, maintained in the APS
+GitLab server at <a href="https://git.aps.anl.gov/iocapps/directNetAsyn">
+iocapps/directNetAsyn</a>. Installation is in two parts:</p>
 
 <ul>
   <li><a href="#Site Installation">Site support installation</a> is done once
@@ -255,9 +251,9 @@ the device support for the corresponding address within the PLC. This address
 can be specified in the same way it would be given to the PLC programming
 software DirectSoft. The following table details the address types available.
 Note that just as when programming the PLC, all addresses and bit numbers must
-be given in octal, a leading zero being unnecessary (this address format is
-identical to that used by the directNetMpf driver, the only change required to
-convert records is to modify their DTYP string).</p>
+be given in octal, a leading zero being unnecessary. Note that the ranges given
+below apply to the D2-260 and D2-262 PLC CPUs; older CPUs support fewer I/O
+points, be careful to only use addresses that your CPU actually supports.</p>
 
 <blockquote>
 
@@ -271,17 +267,17 @@ convert records is to modify their DTYP string).</p>
     </thead>
     <tbody>
       <tr>
-        <td>X0 - X777</td>
+        <td>X0 - X1777</td>
         <td>Input point</td>
         <td>Bit</td>
       </tr>
       <tr>
-        <td>Y0 - Y777</td>
+        <td>Y0 - Y1777</td>
         <td>Output point</td>
         <td>Bit</td>
       </tr>
       <tr>
-        <td>C0 - C1777</td>
+        <td>C0 - C3777</td>
         <td>Control relay</td>
         <td>Bit</td>
       </tr>
@@ -301,14 +297,24 @@ convert records is to modify their DTYP string).</p>
         <td>Word</td>
       </tr>
       <tr>
-        <td>CT0 - CT177</td>
+        <td>CT0 - CT377</td>
         <td>Counter status bit</td>
         <td>Bit</td>
       </tr>
       <tr>
-        <td>CTA0 - CTA177</td>
+        <td>CTA0 - CTA377</td>
         <td>Counter current value</td>
         <td>Word</td>
+      </tr>
+      <tr>
+        <td>GX0 - GX3777</td>
+        <td>Remote input (D2-260+ only)</td>
+        <td>Bit</td>
+      </tr>
+      <tr>
+        <td>GY0 - GY3777</td>
+        <td>Remote output (D2-260+ only)</td>
+        <td>Bit</td>
       </tr>
       <tr>
         <td>V0 - V41237</td>
@@ -412,8 +418,8 @@ point format.</p>
   record's EOFF and ESLO fields. Values read by an IOC must be stored in the PLC
   memory location as binary numbers, not as BCD. Also note that the ADC input
   modules available for the 205 series PLCs cannot be addressed directly without
-  some intermediate ladder logic to de-multiplex the channels (see <a href="#PLC
-  Setup">2.3 PLC Setup</a>).</dd>
+  some intermediate ladder logic to de-multiplex the channels (see
+  <a href="#PLC Setup">2.3 PLC Setup</a>).</dd>
 
 <dt>Floating point format</dt>
 <dd>
@@ -733,19 +739,23 @@ valid range, ask for help on the <b><tt>d</tt></b> command thus:</p>
     The 'd' can command dump the contents of various PLC locations.
     Valid DL250 PLC address types and ranges are:
         V-memory        V00000 - V41237
-        Counter value   CTA000 - CTA177
-        Counter status   CT000 - CT177
-        Control relay    C0000 - C1777
+        Counter value   CTA000 - CTA377
+        Counter status   CT000 - CT377
+        Control relay    C0000 - C3777
+        Floating point  F00000 - F41236
+        Remote input    GX0000 - GX3777
+        Remote output   GY0000 - GY3777
         Special relay    SP000 - SP777
         Stage status     S0000 - S1777
         Timer value      TA000 - TA377
         Timer status      T000 - T377
-        Digital input     X000 - X777
-        Digital output    Y000 - Y777
+        Digital input     X000 - X1777
+        Digital output    Y000 - Y1777
         Ladder program   L0000 - L1DFF
         Scratchpad       Z0000 - Z5101
     L and Z addresses are in hex, other addresses in octal.
-    Word data values are output in hex, Bit data in binary.</pre>
+    Word data values are output in hex, Bit data in binary.
+    Older CPUs support fewer I/O points than the D2-262.</pre>
 </blockquote>
 
 <p>V-memory locations can be modified using the <b><tt>m</tt></b> command, which

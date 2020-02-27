@@ -83,16 +83,18 @@ int dnAsynAddr(struct dbCommon *prec, struct plcAddr *paddr, struct link *plink)
 	unsigned int maxAddr;	/* largest legal bit/address */
     } aTypes[] = {	/* NB: Relative order of entries is important */
 	{"B",   WORD, 000000, 041237},
-	{"CTA", WORD, 001000,    127},
-	{"CT",  BIT,  041140,    127},
-	{"C",   BIT,  040600,   1023},
-	{"SP",  BIT,  041200,    511},
-	{"S",   BIT,  041000,   1023},
-	{"TA",  WORD, 000000,    255},
-	{"T",   BIT,  041100,    255},
+	{"CTA", WORD, 001000,   0377},
+	{"CT",  BIT,  041140,   0377},
+	{"C",   BIT,  040600,  03777},
+	{"GX",  BIT,  040000,  03777},
+	{"GY",  BIT,  040200,  03777},
+	{"SP",  BIT,  041200,   0777},
+	{"S",   BIT,  041000,  01777},
+	{"TA",  WORD, 000000,   0377},
+	{"T",   BIT,  041100,   0377},
 	{"V",   WORD, 000000, 041237},
-	{"X",   BIT,  040400,    511},
-	{"Y",   BIT,  040500,    511},
+	{"X",   BIT,  040400,  01777},
+	{"Y",   BIT,  040500,  01777},
     };
     
     /* link address must be INST_IO */

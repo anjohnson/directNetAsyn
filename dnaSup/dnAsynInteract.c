@@ -72,20 +72,22 @@ struct plcIoType {
 };
 
 static const struct plcIoType plcIoData[] = {
-    {"V",   5,  8, WORD, READVMEM, 2,  8, 00001, 041237, "V-memory"},
-    {"CTA", 3,  8, WORD, READVMEM, 2,  8, 01001,    127, "Counter value"},
-    {"CT",  3,  8, BIT,  READOUTS, 1,  2, 0x001,    127, "Counter status"},
-    {"C",   4,  8, BIT,  READOUTS, 1,  2, 0x181,   1023, "Control relay"},
-    {"F",   5,  8, WORD, READVMEM, 4,  2, 00001, 041237, "Floating point"},
-    {"SP",  3,  8, BIT,  READINPS, 1,  2, 0x181,    511, "Special relay"},
-    {"S",   4,  8, BIT,  READOUTS, 1,  2, 0x281,   1023, "Stage status"},
-    {"TA",  3,  8, WORD, READVMEM, 2,  8, 00001,    255, "Timer value"},
-    {"T",   3,  8, BIT,  READOUTS, 1,  2, 0x301,    255, "Timer status"},
-    {"X",   3,  8, BIT,  READINPS, 1,  2, 0x101,    511, "Digital input"},
-    {"Y",   3,  8, BIT,  READOUTS, 1,  2, 0x101,    511, "Digital output"},
- 
-    {"L",   4, 16, WORD, READPROG, 3,  5, 0x000, 0x1dff, "Ladder program"},
-    {"Z",   4, 16, WORD, READSPAD, 1, 16, 0x000, 0x5101, "Scratchpad"},
+    {"V",   5,  8, WORD, READVMEM, 2,  8,  00001, 041237, "V-memory"},
+    {"CTA", 3,  8, WORD, READVMEM, 2,  8,  01001,   0377, "Counter value"},
+    {"CT",  3,  8, BIT,  READOUTS, 1,  2,  0x001,   0377, "Counter status"},
+    {"C",   4,  8, BIT,  READOUTS, 1,  2,  0x181,  03777, "Control relay"},
+    {"F",   5,  8, WORD, READVMEM, 4,  2,  00001, 041236, "Floating point"},
+    {"GX",  5,  8, BIT,  READVMEM, 2,  8, 040001,  03777, "Remote input"},
+    {"GY",  5,  8, BIT,  READVMEM, 2,  8, 040201,  03777, "Remote output"},
+    {"SP",  3,  8, BIT,  READINPS, 1,  2,  0x181,   0777, "Special relay"},
+    {"S",   4,  8, BIT,  READOUTS, 1,  2,  0x281,  01777, "Stage status"},
+    {"TA",  3,  8, WORD, READVMEM, 2,  8,  00001,   0377, "Timer value"},
+    {"T",   3,  8, BIT,  READOUTS, 1,  2,  0x301,   0377, "Timer status"},
+    {"X",   3,  8, BIT,  READINPS, 1,  2,  0x101,  01777, "Digital input"},
+    {"Y",   3,  8, BIT,  READOUTS, 1,  2,  0x101,  01777, "Digital output"},
+
+    {"L",   4, 16, WORD, READPROG, 3,  5,  0x000, 0x1dff, "Ladder program"},
+    {"Z",   4, 16, WORD, READSPAD, 1, 16,  0x000, 0x5101, "Scratchpad"},
 };
 
 

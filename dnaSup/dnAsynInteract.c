@@ -177,7 +177,7 @@ static void dniHelp(const char *pcmd) {
 	break;
     case 'd':
 	puts("    The 'd' can command dump the contents of various PLC locations.\n"
-	     "    Valid DL250 PLC address types and ranges are:");
+	     "    Valid D2-262 PLC address types and ranges are:");
 	for (i=0; i<sizeof(plcIoData) / sizeof(plcIoData[0]); i++) {
 	    const struct plcIoType *pio = &plcIoData[i];
 	    char addrFormat = (pio->addrBase == 8) ? 'o' : 'X';
@@ -190,7 +190,8 @@ static void dniHelp(const char *pcmd) {
 	    printf(msgbuf, 0, pio->maxAddr);
 	}
 	puts("    L and Z addresses are in hex, other addresses in octal.\n"
-	     "    Word data values are output in hex, Bit data in binary.");
+	     "    Word data values are output in hex, Bit data in binary.\n"
+	     "    Older CPUs support fewer I/O points than the D2-262.");
 	break;
     case 'm':
 	puts("    The 'm' command modifies VMEM locations so addr must be octal.\n"

@@ -353,7 +353,7 @@ static void simWriteMsg(dnAsynClient *pclient, const char *pdata, int len) {
 
     next = block + sprintf(block, "D %2.2x ", len);
     while (len-- > 0) {
-        next += sprintf(next, "%2.2x", (unsigned) *pdata++);
+        next += sprintf(next, "%2.2x", 0xff & *pdata++);
     }
     *next++ = '\n';
 
